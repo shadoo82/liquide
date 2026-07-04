@@ -51,8 +51,21 @@
   .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);}
   .dot.ok{background:var(--up);} .dot.err{background:var(--down);}
 
-  main{flex:1;position:relative;}
-  canvas{display:block;width:100%;height:100%;}
+  main{flex:1;position:relative;}  canvas{display:block;width:100%;height:100%;}
+  #lsbar{display:flex;align-items:center;justify-content:center;gap:14px;padding:5px 14px;background:var(--panel);
+    border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap;}
+  #lsbar .lslabel{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
+  #lsbar select{background:var(--panel2);color:var(--txt);border:1px solid var(--border);
+    border-radius:6px;padding:3px 6px;font-size:11px;cursor:pointer;}
+  #lsbar .lsbarwrap{flex:0 0 280px;height:17px;border-radius:9px;overflow:hidden;display:flex;
+    background:#141d2c;border:1px solid var(--border);}
+  #lsbar .lslong{flex-basis:0;flex-grow:1;background:linear-gradient(90deg,#0c4d31,#26d67c);
+    display:flex;align-items:center;justify-content:flex-end;padding-right:7px;color:#eafff5;font-weight:700;font-size:10.5px;overflow:hidden;}
+  #lsbar .lsshort{flex-basis:0;flex-grow:1;background:linear-gradient(90deg,#ff5b6e,#5c1f28);
+    display:flex;align-items:center;padding-left:7px;color:#ffeaed;font-weight:700;font-size:10.5px;overflow:hidden;}
+  #lsbar .lsv{color:var(--muted);font-size:11px;}
+  #lsbar .lsval{font-weight:700;} #lsbar .lsval.long{color:var(--up);} #lsbar .lsval.short{color:var(--down);}
+  #lsbar #lsSkew{font-weight:700;}
   .disclaimer{position:absolute;left:10px;bottom:6px;font-size:10.5px;color:#516073;
     background:rgba(10,14,23,.6);padding:2px 7px;border-radius:5px;pointer-events:none;}
 
@@ -117,6 +130,18 @@
     </div>
   </header>
 
+  <div id="lsbar">
+    <span class="lslabel">Largo / Corto · vol. taker · últimos 30s</span>
+    <span class="lsv" id="lsFlow" style="color:#7d8ca5;"></span>
+    <div class="lsbarwrap">
+      <div class="lslong" id="lsLongBar">—</div>
+      <div class="lsshort" id="lsShortBar">—</div>
+    </div>
+    <span class="lsv">Largo <b class="lsval long" id="lsLongVal">—</b></span>
+    <span class="lsv">Corto <b class="lsval short" id="lsShortVal">—</b></span>
+    <span class="lsv" id="lsSkew"></span>
+  </div>
+
   <main>
     <canvas id="cv"></canvas>
     <div id="colorctl">
@@ -172,7 +197,9 @@ const state = {
   x0: null, x1: null, userZoomX: false,
   weightMode: "vol", oiMap: null,   // "vol" | "oi" | "oidelta"
   showHTF: false, htfZones: [], htfTf: null,
+  lsBuy: 0, lsSell: 0, lsLive: false,   // ratio largo/corto por REST (velas 1m)
   ws: null, switching: false, needCompute: false, reconnectT: null,
+  tws: null, treconnectT: null,
   layout: null, staticCanvas: null,
 };
 
@@ -362,7 +389,7 @@ async function fetchHTF(){
 
 async function reload(){
   state.switching=true; clearTimeout(state.reconnectT); closeWS();
-  state.liqs=[]; state.liqTot5m=0;
+  state.liqs=[]; state.liqTot5m=0; state.lsBuy=0; state.lsSell=0; state.lsLive=false;
   state.userZoom=false; state.viewLo=null; state.viewHi=null;
   state.userZoomX=false; state.x0=null; state.x1=null;
   setStatus("cargando "+state.symbol.replace("USDT","")+" "+state.tf+"…","");
@@ -372,6 +399,7 @@ async function reload(){
     await fetchHTF();
     $("#price b").textContent = state.livePrice? fmt(state.livePrice) : "—";
     computeHeatmap(); buildStatic(); updateTargets();
+    pollLS();
     connectWS();
   }catch(e){ setStatus("error datos ("+e.message+")","err"); console.error(e); }
   state.switching=false;
@@ -776,26 +804,39 @@ function drawPriorityBadges(L){
 }
 
 /* ---------- WEBSOCKET (kline vivo + liquidaciones reales) ---------- */
-function closeWS(){ if(state.ws){ try{state.ws.onclose=null; state.ws.close();}catch(e){} state.ws=null; } }
+function closeWS(){
+  if(state.ws){ try{state.ws.onclose=null; state.ws.close();}catch(e){} state.ws=null; }
+  if(state.tws){ try{state.tws.onclose=null; state.tws.close();}catch(e){} state.tws=null; }
+  clearTimeout(state.treconnectT);
+}
+function connectTradeWS(){
+  const s=state.symbol.toLowerCase();
+  const ws=new WebSocket(`wss://fstream.binance.com/ws/${s}@aggTrade`);  // stream dedicado
+  state.tws=ws;
+  ws.onmessage=e=>{ let d; try{d=JSON.parse(e.data);}catch(_){return;} if(d.e==="aggTrade") handleTrade(d); };
+  ws.onerror=()=>{ try{ws.close();}catch(_){} };
+  ws.onclose=()=>{ if(state.tws!==ws) return; state.tws=null;
+    if(!state.switching) state.treconnectT=setTimeout(connectTradeWS,2500); };
+}
 function connectWS(){
   closeWS();
   const s=state.symbol.toLowerCase();
-  const url=`${CONFIG.wsBase}${s}@kline_${state.tf}/${s}@forceOrder/${s}@aggTrade`;
+  const url=`${CONFIG.wsBase}${s}@kline_${state.tf}/${s}@forceOrder`;
   const ws=new WebSocket(url); state.ws=ws;
   ws.onopen=()=>setStatus("en vivo · "+state.symbol.replace("USDT",""),"ok");
   ws.onmessage=e=>{
     let m; try{m=JSON.parse(e.data);}catch(_){return;}
     const d=m.data; if(!d)return;
     if(d.e==="kline") handleKline(d.k);
-    else if(d.e==="aggTrade") handleTrade(d);        // precio en cada operación (tiempo real)
     else if(d.e==="forceOrder") handleLiq(d.o);
   };
   ws.onerror=()=>{ try{ws.close();}catch(_){} };
   ws.onclose=()=>{ if(state.ws!==ws) return;         // ignora cierres de sockets viejos
     state.ws=null; if(!state.switching){ setStatus("reconectando…","");
       state.reconnectT=setTimeout(connectWS,2500);} };
+  connectTradeWS();                                  // operaciones en vivo (aparte)
 }
-// precio en tiempo real (cada trade): mueve la línea y la vela al instante
+// precio en tiempo real (cada trade, si el stream llega): mueve la línea y la vela
 function handleTrade(d){
   const price=+d.p; if(!price) return;
   state.livePrice=price;
@@ -807,17 +848,17 @@ function handleKline(k){
   const c=state.candles; if(!c.length)return;
   const last=c[c.length-1];
   const kt=k.t, price=+k.c;
-  if(kt===last.t){                                   // actualiza la vela actual
+  if(kt===last.t){
     last.open=+k.o; last.high=+k.h; last.low=+k.l; last.close=price; last.volume=+k.v; last.qvol=+k.q; last.tbq=+k.Q;
-  } else if(kt>last.t){                               // nueva vela
+  } else if(kt>last.t){
     c.push({t:kt,open:+k.o,high:+k.h,low:+k.l,close:price,volume:+k.v,qvol:+k.q,tbq:+k.Q,oi:last.oi||0});
     if(c.length>state.limit)c.shift();
-  } else {                                            // kline más viejo: al menos sincroniza el precio
+  } else {
     last.close=price; if(price>last.high)last.high=price; if(price<last.low)last.low=price;
   }
   state.livePrice=price;
   $("#price b").textContent=fmt(price);
-  state.needCompute=true;                             // redibuja: la vela sigue al precio en vivo
+  state.needCompute=true;
 }
 function handleLiq(o){
   const price=+(o.ap||o.p), qty=+o.q, usd=price*qty;
@@ -915,6 +956,39 @@ function showTip(clientX, mouseY){
 }
 function hideTip(){ const t=$("#tip"); if(t) t.style.display="none"; state.hover=null; }
 
+/* ---------- BARRA LARGO/CORTO (velas 1m por REST, confiable) ---------- */
+async function pollLS(){
+  if(!state.candles.length) return;
+  try{
+    const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=1m&limit=2`;
+    const r=await fetch(url); if(!r.ok) throw new Error("ls "+r.status);
+    const raw=await r.json();
+    let buy=0, tot=0;
+    for(const k of raw){ buy+=+k[10]; tot+=+k[7]; }   // taker buy quote (10), total quote (7)
+    if(tot>0){ state.lsBuy=buy; state.lsSell=tot-buy; state.lsLive=true; }
+  }catch(e){ /* mantiene el último valor */ }
+}
+function updateLS(){
+  let buy=state.lsBuy, sell=state.lsSell;
+  if(buy+sell<=0){                                   // aún sin datos: respaldo con velas del chart
+    const c=state.candles; if(!c.length) return;
+    let tb=0,tt=0,n=Math.min(2,c.length);
+    for(let i=c.length-n;i<c.length;i++){ tb+=c[i].tbq||0; tt+=c[i].qvol||0; }
+    if(tt<=0) return; buy=tb; sell=tt-tb;
+  }
+  const tot=buy+sell, lf=buy/tot, sf=1-lf;
+  const lb=$("#lsLongBar"), sb=$("#lsShortBar");
+  lb.style.flexGrow=Math.max(lf,0.001); sb.style.flexGrow=Math.max(sf,0.001);
+  lb.textContent=(lf*100).toFixed(1)+"%"; sb.textContent=(sf*100).toFixed(1)+"%";
+  $("#lsLongVal").textContent=usdFmt(buy);
+  $("#lsShortVal").textContent=usdFmt(sell);
+  const fl=$("#lsFlow"); if(fl){ fl.textContent = state.lsLive? "· en vivo ⚡" : "· cargando…";
+    fl.style.color = state.lsLive? "#26d67c" : "#7d8ca5"; }
+  const sk=$("#lsSkew");
+  if(lf>=0.5){ sk.textContent="▲ Presión compradora"; sk.style.color="#26d67c"; }
+  else { sk.textContent="▼ Presión vendedora"; sk.style.color="#ff5b6e"; }
+}
+
 /* ---------- LOOPS ---------- */
 // recalcular heatmap si hace falta (throttle) — tiempo real
 setInterval(()=>{ if(state.needCompute && state.candles.length){
@@ -924,6 +998,7 @@ setInterval(()=>{ if(state.candles.length) state.needCompute=true; }, 2000);
 // objetivos + total liquidaciones cada 1s
 setInterval(()=>{
   updateTargets();
+  updateLS();
   const cut=Date.now()-5*60*1000, wallNow=Date.now(), pnow=performance.now();
   let tot=0; for(const l of state.liqs){ const wallT=wallNow-(pnow-l.t); if(wallT>=cut) tot+=l.usd; }
   $("#liqtot").textContent=usdFmt(tot);
@@ -933,6 +1008,8 @@ setInterval(async()=>{ if(state.switching||!state.candles.length)return;
   try{ await fetchKlines(); if(state.weightMode!=="vol"){ await fetchOI(); } applyOItoCandles(); await fetchHTF(); state.needCompute=true; }catch(e){} }, 60000);
 
 window.addEventListener("resize",()=>{ resizeCanvas(); if(state.grid) buildStatic(); });
+setInterval(updateLS, 500);   // barra L/S en vivo
+setInterval(pollLS, 2000);    // datos taker por REST (velas 1m)
 document.addEventListener("click",()=>closeAllDropdowns());
 
 /* ---------- ZOOM / PAN en el eje de precios ---------- */
