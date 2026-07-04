@@ -131,7 +131,7 @@
   </header>
 
   <div id="lsbar">
-    <span class="lslabel">Largo / Corto · vol. taker · últimos 30s</span>
+    <span class="lslabel" id="lsLabel">Largo / Corto · vol. taker</span>
     <span class="lsv" id="lsFlow" style="color:#7d8ca5;"></span>
     <div class="lsbarwrap">
       <div class="lslong" id="lsLongBar">—</div>
@@ -960,7 +960,7 @@ function hideTip(){ const t=$("#tip"); if(t) t.style.display="none"; state.hover
 async function pollLS(){
   if(!state.candles.length) return;
   try{
-    const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=1m&limit=2`;
+    const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=${state.tf}&limit=2`;
     const r=await fetch(url); if(!r.ok) throw new Error("ls "+r.status);
     const raw=await r.json();
     let buy=0, tot=0;
@@ -984,6 +984,7 @@ function updateLS(){
   $("#lsShortVal").textContent=usdFmt(sell);
   const fl=$("#lsFlow"); if(fl){ fl.textContent = state.lsLive? "· en vivo ⚡" : "· cargando…";
     fl.style.color = state.lsLive? "#26d67c" : "#7d8ca5"; }
+  const ll=$("#lsLabel"); if(ll) ll.textContent="Largo / Corto · vol. taker · "+state.tf;
   const sk=$("#lsSkew");
   if(lf>=0.5){ sk.textContent="▲ Presión compradora"; sk.style.color="#26d67c"; }
   else { sk.textContent="▼ Presión vendedora"; sk.style.color="#ff5b6e"; }
