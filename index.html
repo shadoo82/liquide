@@ -197,6 +197,7 @@ const state = {
   x0: null, x1: null, userZoomX: false,
   weightMode: "vol", oiMap: null,   // "vol" | "oi" | "oidelta"
   showHTF: false, htfZones: [], htfTf: null,
+  showVP: false, vp: null, vpPoc: 0, vpMax: 1, vpWidth: 0.20, vpThick: 1, vpRows: 2000,   // perfil de volumen (apagado, pero filas máx y grosor máx)
   lsBuy: 0, lsSell: 0, lsLive: false,   // ratio largo/corto por REST (velas 1m)
   ws: null, switching: false, needCompute: false, reconnectT: null,
   tws: null, treconnectT: null,
@@ -212,6 +213,8 @@ const SYMNAMES = { BTCUSDT:"BTC", ETHUSDT:"ETH", SOLUSDT:"SOL", XRPUSDT:"XRP", D
   XAUUSDT:"Oro", XAGUSDT:"Plata", CLUSDT:"Petróleo", BZUSDT:"Brent", NATGASUSDT:"Gas", PAXGUSDT:"PAXG" };
 const symName = s => SYMNAMES[s] || s.replace("USDT","");
 const HTF_FOR = { "5m":"4h", "15m":"4h", "1h":"4h", "4h":"1d", "1d":null };  // temporalidad mayor a superponer
+// ventana EXACTA del ratio L/S por TF (interval, nº de velas) = mismo periodo que la TF
+const LS_POLL = { "5m":["1m",5], "15m":["1m",15], "1h":["1m",60], "4h":["5m",48], "1d":["15m",96] };
 const fmt = n => n>=1000 ? n.toLocaleString("en-US",{maximumFractionDigits:0})
                           : n.toLocaleString("en-US",{maximumFractionDigits: n<10?4:2});
 const usdFmt = n => "$"+(n>=1e9?(n/1e9).toFixed(2)+"B":n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(0)+"K":n.toFixed(0));
@@ -265,6 +268,37 @@ function buildUI(){
     await fetchHTF(); buildStatic();
   };
   oc.appendChild(hb);
+  // toggle: perfil de volumen real + deslizante de ancho
+  const pb=document.createElement("button"); pb.className="pill"+(state.showVP?" on":"");
+  pb.textContent="Vol.Perfil"; pb.title="Perfil de volumen real negociado por precio (POC)";
+  pb.onclick=()=>{ state.showVP=!state.showVP; pb.classList.toggle("on",state.showVP);
+    vpSl.style.display=state.showVP?"inline-block":"none"; if(state.grid) buildStatic(); };
+  oc.appendChild(pb);
+  const vpSl=document.createElement("input"); vpSl.type="range"; vpSl.min="0.12"; vpSl.max="1"; vpSl.step="0.02";
+  vpSl.value=state.vpThick; vpSl.title="Grosor de las barras (izq = más finas)";
+  vpSl.style.cssText="width:60px;vertical-align:middle;accent-color:#ff9fe0;cursor:pointer;margin-left:4px;display:"+(state.showVP?"inline-block":"none")+";";
+  vpSl.oninput=()=>{ state.vpThick=+vpSl.value; if(state.grid) buildStatic(); };
+  oc.appendChild(vpSl);
+  const vpWl=document.createElement("input"); vpWl.type="range"; vpWl.min="0.04"; vpWl.max="0.35"; vpWl.step="0.01";
+  vpWl.value=state.vpWidth; vpWl.title="Largo/ancho del perfil";
+  vpWl.style.cssText="width:60px;vertical-align:middle;accent-color:#9fd0ff;cursor:pointer;margin-left:3px;display:"+(state.showVP?"inline-block":"none")+";";
+  vpWl.oninput=()=>{ state.vpWidth=+vpWl.value; if(state.grid) buildStatic(); };
+  oc.appendChild(vpWl);
+  // control de FILAS del perfil (como el VRVP del orderbook)
+  const vpRowsWrap=document.createElement("span");
+  vpRowsWrap.style.cssText="display:"+(state.showVP?"inline-flex":"none")+";align-items:center;gap:3px;margin-left:6px;";
+  const rlab=document.createElement("span"); rlab.className="lbl"; rlab.textContent="Filas"; rlab.style.marginRight="2px";
+  const rval=document.createElement("span"); rval.textContent=state.vpRows; rval.style.cssText="font-size:11px;color:var(--accent);font-weight:700;min-width:28px;text-align:center;";
+  const rminus=document.createElement("button"); rminus.className="pill"; rminus.textContent="−"; rminus.style.padding="2px 7px";
+  const rplus=document.createElement("button"); rplus.className="pill"; rplus.textContent="+"; rplus.style.padding="2px 7px";
+  const setRows=v=>{ state.vpRows=Math.max(30,Math.min(2000,v)); rval.textContent=state.vpRows;
+    computeHeatmap(); buildStatic(); };
+  rminus.onclick=()=>setRows(state.vpRows-50); rplus.onclick=()=>setRows(state.vpRows+50);
+  vpRowsWrap.append(rlab,rminus,rval,rplus); oc.appendChild(vpRowsWrap);
+  pb.onclick=()=>{ state.showVP=!state.showVP; pb.classList.toggle("on",state.showVP);
+    const d=state.showVP?"inline-block":"none"; vpSl.style.display=d; vpWl.style.display=d;
+    vpRowsWrap.style.display=state.showVP?"inline-flex":"none";
+    if(state.grid) buildStatic(); };
   // selector de PESO: Volumen / OI total / OI Δ (radio)
   const wlab=document.createElement("span"); wlab.className="lbl"; wlab.textContent="Peso";
   wlab.style.marginLeft="8px"; oc.appendChild(wlab);
@@ -474,6 +508,17 @@ function computeHeatmap(){
   state.binLo=bLo; state.binHi=bHi; state.bucket=bucket;
   state.profile=profile;
 
+  // PERFIL DE VOLUMEN REAL: filas propias (vpRows) sobre el rango de datos
+  const VR=Math.max(20,Math.min(2000,state.vpRows||150)), vpk=(hi-lo)/VR;
+  const vp=new Float64Array(VR);
+  for(const k of c){ const vol=k.qvol||0; if(vol<=0)continue;
+    let r0=Math.floor((k.low-lo)/vpk), r1=Math.floor((k.high-lo)/vpk);
+    if(r0<0)r0=0; if(r1>=VR)r1=VR-1; if(r1<r0){const t=r0;r0=r1;r1=t;}
+    const per=vol/(r1-r0+1); for(let r=r0;r<=r1;r++) vp[r]+=per;
+  }
+  let poc=0, pv=0; for(let r=0;r<VR;r++){ if(vp[r]>pv){pv=vp[r];poc=r;} }
+  state.vp=vp; state.vpPoc=poc; state.vpMax=pv||1; state.vpLo=lo; state.vpBucket=vpk; state.vpN=VR;
+
   // zonas fuertes = niveles con más liquidez (mismo perfil que se ve)
   const price=state.livePrice||c[N-1].close;
   const zones=[];
@@ -564,6 +609,31 @@ function buildStatic(){
       o.fillStyle=up?"#23dc7d":"#ff465f";
       o.fillRect(xc-bw/2, bt, bw, bh);
       o.strokeStyle="rgba(0,0,0,.7)"; o.lineWidth=0.8; o.strokeRect(xc-bw/2, bt, bw, bh);
+    }
+    o.restore();
+  }
+
+  // --- PERFIL DE VOLUMEN REAL (filas propias, a la izquierda + POC) ---
+  if(state.showVP && state.vp){
+    o.save(); o.beginPath(); o.rect(L.heatL,L.top,L.heatW,L.plotH); o.clip();
+    const VR=state.vpN, vpW=L.heatW*state.vpWidth;
+    const rh0=L.plotH*state.vpBucket/(state.viewHi-state.viewLo);   // alto de cada fila en px
+    for(let r=0;r<VR;r++){ const v=state.vp[r]; if(v<=0)continue;
+      const p=state.vpLo+(r+0.5)*state.vpBucket, y=priceToY(p);
+      if(y<L.top-2||y>L.bottom+2)continue;
+      const len=(v/state.vpMax)*vpW, bh=Math.max(rh0*state.vpThick,0.8);
+      o.fillStyle= r===state.vpPoc? "rgba(255,120,220,.75)":"rgba(205,216,240,.4)";
+      o.fillRect(L.heatL, y-bh/2, len, bh);
+    }
+    // línea POC (precio con más volumen real negociado)
+    const pocP=state.vpLo+(state.vpPoc+0.5)*state.vpBucket, py=priceToY(pocP);
+    if(py>=L.top&&py<=L.bottom){
+      o.strokeStyle="rgba(255,120,220,.85)"; o.lineWidth=1.4; o.setLineDash([6,4]);
+      o.beginPath(); o.moveTo(L.heatL,py); o.lineTo(L.heatR,py); o.stroke(); o.setLineDash([]);
+      o.font="bold 10px Segoe UI"; o.textBaseline="middle"; o.textAlign="left";
+      const txt="POC "+fmt(pocP), tw=o.measureText(txt).width;
+      o.fillStyle="rgba(45,10,40,.9)"; o.fillRect(L.heatL+vpW+4, py-8, tw+8, 16);
+      o.fillStyle="#ff9fe0"; o.fillText(txt, L.heatL+vpW+8, py+0.5);
     }
     o.restore();
   }
@@ -748,7 +818,19 @@ function frame(){
     }
     ctx.restore();
 
-    // crosshair del hover (línea + punto amarillo, como Coinglass)
+    // línea del cursor (crosshair) — sigue el mouse por todo el gráfico
+    if(state.cross!=null){ const y=state.cross;
+      ctx.strokeStyle="rgba(255,255,255,.28)"; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(L.heatL,y); ctx.lineTo(L.profR,y); ctx.stroke(); ctx.setLineDash([]);
+      // precio del cursor a la derecha
+      const cp=yToPrice(y);
+      ctx.font="bold 10.5px Segoe UI"; ctx.textBaseline="middle"; ctx.textAlign="left";
+      const tag=fmt(cp), tw=ctx.measureText(tag).width;
+      ctx.fillStyle="rgba(40,48,64,.95)"; ctx.fillRect(L.axisX+2, y-8, tw+8, 16);
+      ctx.fillStyle="#e6edf6"; ctx.fillText(tag, L.axisX+6, y+0.5);
+    }
+
+    // crosshair del hover sobre zona (punto amarillo)
     if(state.hover){ const y=state.hover.y;
       if(y>=L.top&&y<=L.bottom){
         ctx.strokeStyle="rgba(255,215,90,.55)"; ctx.lineWidth=1; ctx.setLineDash([4,3]);
@@ -959,8 +1041,9 @@ function hideTip(){ const t=$("#tip"); if(t) t.style.display="none"; state.hover
 /* ---------- BARRA LARGO/CORTO (velas 1m por REST, confiable) ---------- */
 async function pollLS(){
   if(!state.candles.length) return;
+  const cfg = LS_POLL[state.tf] || ["1m",5];
   try{
-    const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=${state.tf}&limit=2`;
+    const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=${cfg[0]}&limit=${cfg[1]}`;
     const r=await fetch(url); if(!r.ok) throw new Error("ls "+r.status);
     const raw=await r.json();
     let buy=0, tot=0;
@@ -1070,12 +1153,15 @@ window.addEventListener("mousemove",e=>{ if(!dragging||state.viewLo==null||!stat
 cv.addEventListener("dblclick",()=>{ state.userZoom=false; state.userZoomX=false; state.x0=null; state.x1=null;
   if(state.grid){ state.viewLo=state.priceLo; state.viewHi=state.priceHi; reRender(); } });
 
-// hover -> tooltip flotante
+// hover -> crosshair siempre + tooltip flotante sobre zonas
 cv.addEventListener("mousemove",e=>{
-  if(dragging){ hideTip(); return; }
-  showTip(e.clientX, e.clientY-cv.getBoundingClientRect().top);
+  if(dragging){ state.cross=null; hideTip(); return; }
+  const my=e.clientY-cv.getBoundingClientRect().top;
+  const L=state.layout;
+  state.cross = (L && my>=L.top && my<=L.bottom) ? my : null;   // línea que sigue el cursor
+  showTip(e.clientX, my);
 });
-cv.addEventListener("mouseleave", hideTip);
+cv.addEventListener("mouseleave", ()=>{ state.cross=null; hideTip(); });
 
 /* ---------- START ---------- */
 buildUI();
