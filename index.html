@@ -1,1 +1,1328 @@
 
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Liquidez · Top 5</title>
+<style>
+  :root{
+    --bg:#0a0e17; --panel:#0f1522; --panel2:#111a2b; --border:#1e2a3f;
+    --txt:#e6edf6; --muted:#7d8ca5; --accent:#37c0ff;
+    --up:#26d67c; --down:#ff5b6e; --warn:#ffb020;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;overflow:hidden;}
+  #app{display:flex;flex-direction:column;height:100vh;}
+
+  header{display:flex;align-items:center;gap:14px;padding:8px 14px;
+    background:var(--panel);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .brand{font-weight:700;font-size:15px;letter-spacing:.3px;}
+  .brand span{color:var(--accent);}
+  .group{display:flex;gap:4px;align-items:center;}
+  .lbl{font-size:11px;color:var(--muted);margin-right:4px;text-transform:uppercase;letter-spacing:.5px;}
+  .grouplbl{color:var(--accent);font-weight:700;}
+  .grouplbl.sep{margin-left:10px;padding-left:12px;border-left:1px solid var(--border);}
+
+  .dropdown{position:relative;display:inline-block;}
+  .dtrig .car{opacity:.55;margin-left:2px;}
+  .dtrig b{color:var(--accent);}
+  .ddpanel{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:30;
+    background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:5px;
+    min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,.55);}
+  .dropdown.open .ddpanel{display:block;}
+  .ddopt{display:block;width:100%;text-align:left;background:transparent;color:var(--muted);
+    border:none;padding:7px 11px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:600;}
+  .ddopt:hover{background:var(--panel2);color:var(--txt);}
+  .ddopt.on{background:var(--accent);color:#04121d;}
+  button.pill{background:var(--panel2);color:var(--muted);border:1px solid var(--border);
+    padding:5px 11px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600;transition:.12s;}
+  button.pill:hover{border-color:#33465f;color:var(--txt);}
+  button.pill.on{background:var(--accent);color:#04121d;border-color:var(--accent);}
+  .chk{display:flex;gap:3px;align-items:center;}
+  .chk button{padding:4px 8px;font-size:11.5px;}
+  .chk button.on{background:#1c3a55;color:var(--accent);border-color:#2b5c85;}
+
+  .stats{margin-left:auto;display:flex;gap:16px;align-items:center;font-size:12px;}
+  .stat b{display:block;font-size:15px;font-weight:700;}
+  .stat small{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
+  #price b{color:var(--accent);}
+  #refreshBtn{font-size:16px;padding:4px 10px;line-height:1;}
+  #refreshBtn.spin{animation:sp .7s linear;}
+  #refreshBtn:disabled{opacity:.5;cursor:wait;}
+  @keyframes sp{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  #status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);}
+  .dot.ok{background:var(--up);} .dot.err{background:var(--down);}
+
+  main{flex:1;position:relative;}  canvas{display:block;width:100%;height:100%;}
+  #lsbar{display:flex;align-items:center;justify-content:center;gap:14px;padding:5px 14px;background:var(--panel);
+    border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap;}
+  #lsbar .lslabel{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
+  #lsbar select{background:var(--panel2);color:var(--txt);border:1px solid var(--border);
+    border-radius:6px;padding:3px 6px;font-size:11px;cursor:pointer;}
+  #lsbar .lsbarwrap{flex:0 0 280px;height:17px;border-radius:9px;overflow:hidden;display:flex;
+    background:#141d2c;border:1px solid var(--border);}
+  #lsbar .lslong{flex-basis:0;flex-grow:1;background:linear-gradient(90deg,#0c4d31,#26d67c);
+    display:flex;align-items:center;justify-content:flex-end;padding-right:7px;color:#eafff5;font-weight:700;font-size:10.5px;overflow:hidden;}
+  #lsbar .lsshort{flex-basis:0;flex-grow:1;background:linear-gradient(90deg,#ff5b6e,#5c1f28);
+    display:flex;align-items:center;padding-left:7px;color:#ffeaed;font-weight:700;font-size:10.5px;overflow:hidden;}
+  #lsbar .lsv{color:var(--muted);font-size:11px;}
+  #lsbar .lsval{font-weight:700;} #lsbar .lsval.long{color:var(--up);} #lsbar .lsval.short{color:var(--down);}
+  #lsbar #lsSkew{font-weight:700;}
+  .disclaimer{position:absolute;left:10px;bottom:6px;font-size:10.5px;color:#516073;
+    background:rgba(10,14,23,.6);padding:2px 7px;border-radius:5px;pointer-events:none;}
+
+  #targets{position:absolute;top:44px;right:8px;width:218px;
+    background:rgba(8,12,20,.92);border:1px solid #263650;border-radius:8px;
+    padding:6px 8px;font-size:11px;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+  #targets .tt{font-size:9px;color:#7d8ca5;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+  #targets .cp{color:#37c0ff;font-weight:700;margin-bottom:5px;font-size:12px;
+    border-bottom:1px solid #1e2a3f;padding-bottom:4px;}
+  #targets .row{display:flex;align-items:center;gap:5px;padding:2px 0;}
+  #targets .row.main{background:rgba(255,150,30,.14);border-radius:5px;padding:3px 4px;margin:1px -4px;}
+  #targets .rk{width:15px;height:15px;border-radius:50%;background:#1e2a3f;color:#c7d3e3;
+    font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  #targets .row.main .rk{background:#ff9c2e;color:#1a0f00;}
+  #targets .tdot{width:7px;height:7px;border-radius:2px;flex:0 0 auto;}
+  #targets .ar{font-size:10px;width:10px;flex:0 0 auto;}
+  #targets .ar.up,#targets .ds.up{color:#26d67c;} #targets .ar.dn,#targets .ds.dn{color:#ff5b6e;}
+  #targets .pr{font-weight:700;color:#e6edf6;min-width:52px;}
+  #targets .am{color:#ffd75c;font-weight:600;min-width:46px;}
+  #targets .ds{margin-left:auto;font-size:10px;font-weight:600;}
+  #targets .sw{width:13px;text-align:center;font-size:10px;font-weight:700;flex:0 0 auto;}
+  #targets .sw.hit{color:#26d67c;}
+  #targets .sw.pend{color:#ffb020;}
+  #targets .swstat{margin-top:5px;padding-top:5px;border-top:1px solid #1e2a3f;
+    font-size:10px;color:#8393ab;text-align:center;}
+
+  #tip{position:absolute;pointer-events:none;display:none;z-index:6;
+    background:rgba(9,14,22,.97);border:1px solid #2a3a54;border-radius:10px;
+    padding:9px 12px;font-size:11.5px;color:#e6edf6;white-space:nowrap;min-width:170px;
+    box-shadow:0 6px 22px rgba(0,0,0,.7);}
+  #tip .tp{font-weight:700;font-size:14px;color:#e6edf6;margin-bottom:7px;
+    border-bottom:1px solid #223349;padding-bottom:5px;}
+  #tip .tr{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:2px 0;}
+  #tip .tr b{font-weight:700;}
+  #tip .tr small{color:#8393ab;}
+
+  #colorctl{position:absolute;top:44px;left:12px;display:flex;align-items:center;gap:7px;
+    background:rgba(6,10,18,.72);padding:4px 9px;border-radius:6px;font-size:9.5px;
+    color:#8393ab;z-index:5;text-transform:uppercase;letter-spacing:.4px;}
+  #colorctl input{width:120px;accent-color:#37c0ff;cursor:pointer;}
+  #tierleg{position:absolute;top:78px;left:12px;display:flex;flex-direction:column;gap:3px;
+    background:rgba(6,10,18,.6);padding:6px 9px;border-radius:6px;font-size:10px;color:#c7d3e3;z-index:5;}
+  #tierleg>div{display:flex;align-items:center;gap:6px;}
+  #tierleg span{width:9px;height:9px;border-radius:2px;flex:0 0 auto;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">Mapa de <span>Liquidez</span></div>
+
+    <div class="group" id="symbols"></div>
+
+    <div class="group" id="tfs"></div>
+
+    <div class="group" id="levs"></div>
+
+    <div class="group" id="opts"></div>
+
+    <div class="stats">
+      <button class="pill" id="refreshBtn" title="Recargar datos">⟳</button>
+      <div class="stat" id="price"><small id="psym">BTC</small><b>—</b></div>
+      <div class="stat"><small>Vol. 24h</small><b id="vol24">—</b></div>
+      <div class="stat"><small>24h %</small><b id="chg24">—</b></div>
+      <div id="status"><span class="dot" id="sdot"></span><span id="stxt">iniciando…</span></div>
+    </div>
+  </header>
+
+  <div id="lsbar">
+    <span class="lslabel" id="lsLabel">Largo / Corto · vol. taker</span>
+    <span class="lsv" id="lsFlow" style="color:#7d8ca5;"></span>
+    <div class="lsbarwrap">
+      <div class="lslong" id="lsLongBar">—</div>
+      <div class="lsshort" id="lsShortBar">—</div>
+    </div>
+    <span class="lsv">Largo <b class="lsval long" id="lsLongVal">—</b></span>
+    <span class="lsv">Corto <b class="lsval short" id="lsShortVal">—</b></span>
+    <span class="lsv" id="lsSkew"></span>
+  </div>
+
+  <main>
+    <canvas id="cv"></canvas>
+    <div id="colorctl">
+      <span>resaltar</span>
+      <input id="gammaSlider" type="range" min="1" max="3" step="0.1">
+      <span>desvanecer</span>
+    </div>
+    <div id="tierleg">
+      <div><span style="background:#ff5b6e"></span>Clave</div>
+      <div><span style="background:#ff9c2e"></span>Alta</div>
+      <div><span style="background:#ffe15a"></span>Media</div>
+      <div><span style="background:#3fd68a"></span>Baja</div>
+    </div>
+    <div id="targets"></div>
+    <div id="tip"></div>
+    <div class="disclaimer">Estimación (Binance + modelo de apalancamiento). Burbujas = liquidaciones REALES en vivo · rueda: zoom vertical · Shift+rueda: zoom horizontal · arrastrar: mover · doble-click: reset.</div>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG  ·  puedes tocar aquí sin miedo
+   ============================================================ */
+const CONFIG = {
+  groups: [
+    { label:"Cripto",  symbols:["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","DOTUSDT"] },
+    { label:"Índices", symbols:["XAUUSDT","XAGUSDT","CLUSDT","BZUSDT","NATGASUSDT"] },
+  ],
+  tfs: ["5m","15m","1h","4h","1d"],
+  // cuántas velas cargamos por temporalidad (ventana de análisis)
+  limitByTf: { "5m":288, "15m":192, "1h":240, "4h":180, "1d":200 },
+  leverages: [10,25,50,100],          // apalancamientos que puedes activar/desactivar
+  defaultLevs: [10,25,50,100],
+  rows: 300,                          // resolución vertical del heatmap (nº de precios)
+  gamma: 1.5,                         // CONTRASTE: sube (2, 2.5) = más oscuro/limpio · baja (1.2) = más color
+  tipMinT: 0.82,                      // color mínimo para el tooltip: 0.82 = solo amarillo fuerte (sube a 0.9 = más estricto, baja a 0.7 = incluye verde)
+  normPct: 0.96,                      // referencia de brillo máximo (percentil). Sube para apagar ruido
+  bubbleLife: 26000,                  // ms que dura visible una liquidación real
+  restKlines: "https://fapi.binance.com/fapi/v1/klines",
+  oiHist: "https://fapi.binance.com/futures/data/openInterestHist",
+  ticker24: "https://fapi.binance.com/fapi/v1/ticker/24hr",
+  wsBase: "wss://fstream.binance.com/stream?streams=",
+};
+
+/* ============================================================ */
+const state = {
+  symbol: "BTCUSDT", tf: "5m", limit: 288,
+  leverages: [...CONFIG.defaultLevs],
+  candles: [], livePrice: null,
+  grid: null, gridMax: 1, priceLo: 0, priceHi: 1, bucket: 1,
+  profile: null, topZones: [],
+  liqs: [], liqTot5m: 0,
+  viewLo: null, viewHi: null, userZoom: false, showCandles: true,
+  x0: null, x1: null, userZoomX: false,
+  weightMode: "vol", oiMap: null,   // "vol" | "oi" | "oidelta"
+  showHTF: false, htfZones: [], htfTf: null,
+  showVP: false, vp: null, vpPoc: 0, vpMax: 1, vpWidth: 0.20, vpThick: 1, vpRows: 2000,   // perfil de volumen (VRVP)
+  track: [], hits: 0, misses: 0, showTrack: false,   // seguimiento de zonas barridas
+  lsBuy: 0, lsSell: 0, lsLive: false,   // ratio largo/corto por REST (velas 1m)
+  ws: null, switching: false, needCompute: false, reconnectT: null,
+  tws: null, treconnectT: null,
+  layout: null, staticCanvas: null,
+};
+
+const $ = s => document.querySelector(s);
+const cv = $("#cv"), ctx = cv.getContext("2d");
+const buffers=[document.createElement("canvas"),document.createElement("canvas")]; // doble buffer (evita negro)
+const bctx=[buffers[0].getContext("2d"),buffers[1].getContext("2d")];
+let curBuf=0;
+const SYMNAMES = { BTCUSDT:"BTC", ETHUSDT:"ETH", SOLUSDT:"SOL", XRPUSDT:"XRP", DOTUSDT:"DOT",
+  XAUUSDT:"Oro", XAGUSDT:"Plata", CLUSDT:"Petróleo", BZUSDT:"Brent", NATGASUSDT:"Gas", PAXGUSDT:"PAXG" };
+const symName = s => SYMNAMES[s] || s.replace("USDT","");
+const HTF_FOR = { "5m":"4h", "15m":"4h", "1h":"4h", "4h":"1d", "1d":null };  // temporalidad mayor a superponer
+// ventana EXACTA del ratio L/S por TF (interval, nº de velas) = mismo periodo que la TF
+const LS_POLL = { "5m":["1m",5], "15m":["1m",15], "1h":["1m",60], "4h":["5m",48], "1d":["15m",96] };
+const fmt = n => n>=1000 ? n.toLocaleString("en-US",{maximumFractionDigits:0})
+                          : n.toLocaleString("en-US",{maximumFractionDigits: n<10?4:2});
+const usdFmt = n => "$"+(n>=1e9?(n/1e9).toFixed(2)+"B":n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(0)+"K":n.toFixed(0));
+const coinFmt = n => n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":n>=1?n.toFixed(1):n.toFixed(3);
+// niveles de prioridad por fuerza relativa a la zona más fuerte
+const TIERS=[[0.85,"Clave","#ff5b6e"],[0.65,"Alta","#ff9c2e"],[0.45,"Media","#ffe15a"],[0,"Baja","#3fd68a"]];
+function tierOf(v){ const ref=(state.topZones&&state.topZones[0])?state.topZones[0].v:0; const r=ref>0?v/ref:0;
+  for(const t of TIERS){ if(r>=t[0]) return {name:t[1],color:t[2]}; } return {name:"Baja",color:"#3fd68a"}; }
+
+/* ---------- UI ---------- */
+function closeAllDropdowns(){ document.querySelectorAll("header .dropdown.open").forEach(d=>d.classList.remove("open")); }
+function buildUI(){
+  const sc = $("#symbols");
+  sc.innerHTML="";
+  CONFIG.groups.forEach((g)=>{
+    const dd=document.createElement("div"); dd.className="dropdown";
+    const trig=document.createElement("button"); trig.className="pill dtrig";
+    const has=g.symbols.includes(state.symbol);
+    trig.innerHTML=g.label+(has?' · <b>'+symName(state.symbol)+'</b>':'')+' <span class="car">▾</span>';
+    const panel=document.createElement("div"); panel.className="ddpanel";
+    g.symbols.forEach(s=>{
+      const b=document.createElement("button"); b.className="ddopt"+(s===state.symbol?" on":"");
+      b.textContent=symName(s); b.dataset.sym=s;
+      b.onclick=(e)=>{ e.stopPropagation(); selectSymbol(s); closeAllDropdowns(); };
+      panel.appendChild(b);
+    });
+    trig.onclick=(e)=>{ e.stopPropagation(); const open=dd.classList.contains("open");
+      closeAllDropdowns(); if(!open) dd.classList.add("open"); };
+    dd.appendChild(trig); dd.appendChild(panel); sc.appendChild(dd);
+  });
+  // TF como desplegable
+  const tc=$("#tfs"); tc.innerHTML="";
+  const tdd=document.createElement("div"); tdd.className="dropdown";
+  const ttrig=document.createElement("button"); ttrig.className="pill dtrig";
+  ttrig.innerHTML='TF · <b>'+state.tf+'</b> <span class="car">▾</span>';
+  const tpan=document.createElement("div"); tpan.className="ddpanel";
+  CONFIG.tfs.forEach(t=>{
+    const b=document.createElement("button"); b.className="ddopt"+(t===state.tf?" on":"");
+    b.textContent=t; b.dataset.tf=t;
+    b.onclick=e=>{ e.stopPropagation();
+      tpan.querySelectorAll(".ddopt").forEach(x=>x.classList.remove("on")); b.classList.add("on");
+      state.tf=t; ttrig.innerHTML='TF · <b>'+t+'</b> <span class="car">▾</span>';
+      closeAllDropdowns(); reload(); };
+    tpan.appendChild(b);
+  });
+  ttrig.onclick=e=>{ e.stopPropagation(); const o=tdd.classList.contains("open");
+    closeAllDropdowns(); if(!o) tdd.classList.add("open"); };
+  tdd.append(ttrig,tpan); tc.appendChild(tdd);
+
+  // Apalancamientos como desplegable (multi-selección)
+  const lc=$("#levs"); lc.innerHTML=""; lc.classList.remove("chk");
+  const ldd=document.createElement("div"); ldd.className="dropdown";
+  const ltrig=document.createElement("button"); ltrig.className="pill dtrig";
+  const levTxt=()=>'Apalanc. · <b>'+state.leverages.slice().sort((a,b)=>a-b).map(x=>x+"x").join(" ")+'</b> <span class="car">▾</span>';
+  ltrig.innerHTML=levTxt();
+  const lpan=document.createElement("div"); lpan.className="ddpanel";
+  lpan.onclick=e=>e.stopPropagation();   // multi-selección: no cierra al elegir
+  CONFIG.leverages.forEach(L=>{
+    const b=document.createElement("button"); b.className="ddopt"+(state.leverages.includes(L)?" on":"");
+    b.textContent=L+"x";
+    b.onclick=e=>{ e.stopPropagation();
+      if(state.leverages.includes(L)){ if(state.leverages.length>1) state.leverages=state.leverages.filter(x=>x!==L); }
+      else state.leverages.push(L);
+      b.classList.toggle("on", state.leverages.includes(L));
+      ltrig.innerHTML=levTxt();
+      computeHeatmap(); buildStatic(); updateTargets(); };
+    lpan.appendChild(b);
+  });
+  ltrig.onclick=e=>{ e.stopPropagation(); const o=ldd.classList.contains("open");
+    closeAllDropdowns(); if(!o) ldd.classList.add("open"); };
+  ldd.append(ltrig,lpan); lc.appendChild(ldd);
+  const oc=$("#opts");
+  const vb=document.createElement("button"); vb.className="pill"+(state.showCandles?" on":"");
+  vb.textContent="🕯 Velas"; vb.onclick=()=>{ state.showCandles=!state.showCandles;
+    vb.classList.toggle("on",state.showCandles); buildStatic(); };
+  oc.appendChild(vb);
+  // toggle: zonas de temporalidad mayor (macro)
+  const hb=document.createElement("button"); hb.className="pill"+(state.showHTF?" on":"");
+  hb.textContent="Macro"; hb.title="Superponer zonas fuertes de la temporalidad mayor (4h/1d)";
+  hb.onclick=async()=>{
+    state.showHTF=!state.showHTF; hb.classList.toggle("on",state.showHTF);
+    await fetchHTF(); buildStatic();
+  };
+  oc.appendChild(hb);
+  // toggle: perfil de volumen real + deslizante de ancho
+  const pb=document.createElement("button"); pb.className="pill"+(state.showVP?" on":"");
+  pb.textContent="Vol.Perfil"; pb.title="Perfil de volumen real negociado por precio (POC)";
+  pb.onclick=()=>{ state.showVP=!state.showVP; pb.classList.toggle("on",state.showVP);
+    vpSl.style.display=state.showVP?"inline-block":"none"; if(state.grid) buildStatic(); };
+  oc.appendChild(pb);
+  const vpSl=document.createElement("input"); vpSl.type="range"; vpSl.min="0.12"; vpSl.max="1"; vpSl.step="0.02";
+  vpSl.value=state.vpThick; vpSl.title="Grosor de las barras (izq = más finas)";
+  vpSl.style.cssText="width:60px;vertical-align:middle;accent-color:#ff9fe0;cursor:pointer;margin-left:4px;display:"+(state.showVP?"inline-block":"none")+";";
+  vpSl.oninput=()=>{ state.vpThick=+vpSl.value; vpSl.title="Grosor: "+vpSl.value; if(state.grid) buildStatic(); };
+  oc.appendChild(vpSl);
+  const vpWl=document.createElement("input"); vpWl.type="range"; vpWl.min="0.04"; vpWl.max="0.35"; vpWl.step="0.01";
+  vpWl.value=state.vpWidth; vpWl.title="Largo/ancho del perfil";
+  vpWl.style.cssText="width:60px;vertical-align:middle;accent-color:#9fd0ff;cursor:pointer;margin-left:3px;display:"+(state.showVP?"inline-block":"none")+";";
+  vpWl.oninput=()=>{ state.vpWidth=+vpWl.value; if(state.grid) buildStatic(); };
+  oc.appendChild(vpWl);
+  // control de FILAS del perfil (como el VRVP del orderbook)
+  const vpRowsWrap=document.createElement("span");
+  vpRowsWrap.style.cssText="display:"+(state.showVP?"inline-flex":"none")+";align-items:center;gap:3px;margin-left:6px;";
+  const rlab=document.createElement("span"); rlab.className="lbl"; rlab.textContent="Filas"; rlab.style.marginRight="2px";
+  const rval=document.createElement("span"); rval.textContent=state.vpRows; rval.style.cssText="font-size:11px;color:var(--accent);font-weight:700;min-width:28px;text-align:center;";
+  const rminus=document.createElement("button"); rminus.className="pill"; rminus.textContent="−"; rminus.style.padding="2px 7px";
+  const rplus=document.createElement("button"); rplus.className="pill"; rplus.textContent="+"; rplus.style.padding="2px 7px";
+  const setRows=v=>{ state.vpRows=Math.max(30,Math.min(2000,v)); rval.textContent=state.vpRows;
+    buildStatic(); };
+  rminus.onclick=()=>setRows(state.vpRows-50); rplus.onclick=()=>setRows(state.vpRows+50);
+  vpRowsWrap.append(rlab,rminus,rval,rplus); oc.appendChild(vpRowsWrap);
+  // seguimiento de zonas barridas (estadística)
+  const tb=document.createElement("button"); tb.className="pill"+(state.showTrack?" on":"");
+  tb.textContent="🎯 Barridas"; tb.title="Mide cuántas zonas #1-#3 acaba tocando el precio";
+  tb.style.marginLeft="8px";
+  tb.onclick=()=>{ state.showTrack=!state.showTrack; tb.classList.toggle("on",state.showTrack);
+    if(!state.showTrack){ state.track=[]; state.hits=0; state.misses=0; }
+    else trackZones();
+    updateTargets(); };
+  oc.appendChild(tb);
+  pb.onclick=()=>{ state.showVP=!state.showVP; pb.classList.toggle("on",state.showVP);
+    const d=state.showVP?"inline-block":"none"; vpSl.style.display=d; vpWl.style.display=d;
+    vpRowsWrap.style.display=state.showVP?"inline-flex":"none";
+    if(state.grid) buildStatic(); };
+  // selector de PESO: Volumen / OI total / OI Δ (radio)
+  const wlab=document.createElement("span"); wlab.className="lbl"; wlab.textContent="Peso";
+  wlab.style.marginLeft="8px"; oc.appendChild(wlab);
+  const modes=[["vol","Vol","Volumen negociado (recomendado)"],
+               ["oi","OI","Open Interest total real"],
+               ["oidelta","OI Δ","Cambio de OI: posiciones nuevas por vela"]];
+  const wbtns={};
+  modes.forEach(([id,txt,tip])=>{
+    const b=document.createElement("button"); b.className="pill"+(state.weightMode===id?" on":"");
+    b.textContent=txt; b.title=tip; wbtns[id]=b;
+    b.onclick=async()=>{
+      if(state.weightMode===id) return;
+      state.weightMode=id;
+      Object.values(wbtns).forEach(x=>x.classList.remove("on")); b.classList.add("on");
+      setStatus("cargando "+txt+"…","");
+      await fetchOI(); applyOItoCandles();
+      computeHeatmap(); buildStatic(); updateTargets();
+      const live=state.ws&&state.ws.readyState===1;
+      setStatus((live?"en vivo · ":"")+symName(state.symbol)+(id!=="vol"?" · "+txt:""), live?"ok":"");
+    };
+    oc.appendChild(b);
+  });
+  // control de color (junto a la leyenda del imán)
+  const sl=$("#gammaSlider");
+  if(sl){ sl.value=CONFIG.gamma; sl.oninput=()=>{ CONFIG.gamma=+sl.value; if(state.grid) buildStatic(); }; }
+  // botón de recarga (conserva el zoom)
+  const rb=$("#refreshBtn");
+  if(rb) rb.onclick=async()=>{
+    rb.classList.remove("spin"); void rb.offsetWidth; rb.classList.add("spin");
+    rb.disabled=true;
+    // guarda la vista actual
+    const z={uz:state.userZoom, lo:state.viewLo, hi:state.viewHi,
+             uzx:state.userZoomX, x0:state.x0, x1:state.x1};
+    await reload();                 // recalcula velas + zonas + objetivos
+    // restaura la vista si había zoom
+    if(z.uz && z.lo!=null){ state.userZoom=true; state.viewLo=z.lo; state.viewHi=z.hi; }
+    if(z.uzx && z.x0!=null){ state.userZoomX=true; state.x0=z.x0; state.x1=z.x1; }
+    if(z.uz||z.uzx){ computeHeatmap(); buildStatic(); updateTargets(); }
+    rb.disabled=false;
+  };
+}
+function selectSymbol(s){
+  state.symbol=s; $("#psym").textContent=symName(s);
+  document.querySelectorAll("#symbols .ddopt").forEach(b=>b.classList.toggle("on", b.dataset.sym===s));
+  const trigs=document.querySelectorAll("#symbols .dtrig");
+  CONFIG.groups.forEach((g,gi)=>{ const t=trigs[gi]; if(!t)return; const has=g.symbols.includes(s);
+    t.innerHTML=g.label+(has?' · <b>'+symName(s)+'</b>':'')+' <span class="car">▾</span>'; });
+  reload();
+}
+function setStatus(txt,cls){ $("#stxt").textContent=txt; const d=$("#sdot");
+  d.className="dot"+(cls?(" "+cls):""); }
+
+/* ---------- DATOS ---------- */
+async function fetchKlines(){
+  state.limit = CONFIG.limitByTf[state.tf]||200;
+  const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=${state.tf}&limit=${state.limit}`;
+  const r=await fetch(url); if(!r.ok) throw new Error("klines "+r.status);
+  const raw=await r.json();
+  state.candles = raw.map(k=>({t:k[0], open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5], qvol:+k[7], tbq:+k[10]}));
+  state.livePrice = state.candles.length? state.candles[state.candles.length-1].close : null;
+}
+
+async function fetchOI(){
+  if(state.weightMode==="vol"){ state.oiMap=null; return; }
+  try{
+    const url=`${CONFIG.oiHist}?symbol=${state.symbol}&period=${state.tf}&limit=500`;
+    const r=await fetch(url); if(!r.ok) throw new Error("oi "+r.status);
+    const raw=await r.json();
+    const m=new Map();
+    for(const o of raw){ m.set(+o.timestamp, +o.sumOpenInterestValue); }  // OI en USDT
+    state.oiMap = m.size? m : null;
+  }catch(e){ state.oiMap=null; console.warn("OI no disponible", e); }
+}
+// asigna a cada vela su Open Interest (arrastra el último conocido; 0 si aún no hay)
+function applyOItoCandles(){
+  const m=state.oiMap;
+  if(state.weightMode==="vol" || !m){ for(const k of state.candles) k.oi=0; return; }
+  const ts=[...m.keys()].sort((a,b)=>a-b);
+  let j=0, last=0;
+  for(const k of state.candles){
+    while(j<ts.length && ts[j]<=k.t){ last=m.get(ts[j]); j++; }
+    k.oi = last;   // 0 para velas anteriores al primer dato de OI
+  }
+}
+
+// calcula las zonas fuertes de un set de velas (modelo por volumen + taker)
+function htfZones(cands, levs){
+  if(!cands||!cands.length) return [];
+  const N=cands.length, ROWS=140;
+  let lo=Infinity,hi=-Infinity;
+  for(const k of cands){ if(k.low<lo)lo=k.low; if(k.high>hi)hi=k.high;
+    for(const L of levs){ const dl=k.close*(1-1/L),sl=k.close*(1+1/L); if(dl<lo)lo=dl; if(sl>hi)hi=sl; } }
+  const pad=(hi-lo)*0.015; lo-=pad; hi+=pad; const bucket=(hi-lo)/ROWS;
+  const rowOf=p=>{ const r=Math.floor((p-lo)/bucket); return (r<0||r>=ROWS)?-1:r; };
+  const grid=Array.from({length:N},()=>new Float64Array(ROWS));
+  let active=[]; const perL=1/levs.length;
+  for(let i=0;i<N;i++){ const k=cands[i]; const still=[];
+    for(const a of active){ if(a.price>=k.low&&a.price<=k.high){ if(a.row>=0) for(let col=a.start;col<=i;col++) grid[col][a.row]+=a.vol; } else still.push(a); }
+    active=still;
+    let lf=(k.qvol>0)?(k.tbq||0)/k.qvol:0.5; if(lf<0)lf=0; if(lf>1)lf=1; const sf=1-lf;
+    for(const L of levs){ const dl=k.close*(1-1/L),sl=k.close*(1+1/L);
+      active.push({row:rowOf(dl),price:dl,vol:k.qvol*lf*perL,start:i});
+      active.push({row:rowOf(sl),price:sl,vol:k.qvol*sf*perL,start:i}); } }
+  for(const a of active){ if(a.row>=0) for(let col=a.start;col<N;col++) grid[col][a.row]+=a.vol; }
+  const prof=new Float64Array(ROWS);
+  for(let r=0;r<ROWS;r++){ let mx=0; for(let i=0;i<N;i++){ const v=grid[i][r]; if(v>mx)mx=v; } prof[r]=mx; }
+  const price=cands[N-1].close, zones=[];
+  for(let r=0;r<ROWS;r++){ const v=prof[r]; if(v>0){ const p=lo+(r+0.5)*bucket; zones.push({price:p,v}); } }
+  zones.sort((a,b)=>b.v-a.v);
+  return zones.slice(0,5);
+}
+async function fetchHTF(){
+  const htf=HTF_FOR[state.tf];
+  if(!state.showHTF || !htf){ state.htfZones=[]; state.htfTf=null; return; }
+  try{
+    const lim=CONFIG.limitByTf[htf]||200;
+    const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=${htf}&limit=${lim}`;
+    const r=await fetch(url); if(!r.ok) throw new Error("htf "+r.status);
+    const raw=await r.json();
+    const cands=raw.map(k=>({open:+k[1],high:+k[2],low:+k[3],close:+k[4],qvol:+k[7],tbq:+k[10]}));
+    state.htfZones=htfZones(cands, state.leverages); state.htfTf=htf;
+  }catch(e){ state.htfZones=[]; state.htfTf=null; console.warn("HTF no disponible",e); }
+}
+
+async function reload(){
+  state.switching=true; clearTimeout(state.reconnectT); closeWS();
+  state.liqs=[]; state.liqTot5m=0; state.lsBuy=0; state.lsSell=0; state.lsLive=false;
+  state.track=[]; state.hits=0; state.misses=0;
+  state.userZoom=false; state.viewLo=null; state.viewHi=null;
+  state.userZoomX=false; state.x0=null; state.x1=null;
+  setStatus("cargando "+state.symbol.replace("USDT","")+" "+state.tf+"…","");
+  try{
+    await fetchKlines();
+    await fetchOI(); applyOItoCandles();
+    await fetchHTF();
+    $("#price b").textContent = state.livePrice? fmt(state.livePrice) : "—";
+    computeHeatmap(); buildStatic(); updateTargets();
+    pollLS();
+    poll24h();
+    connectWS();
+  }catch(e){ setStatus("error datos ("+e.message+")","err"); console.error(e); }
+  state.switching=false;
+}
+
+/* ---------- MODELO DE LIQUIDEZ (heatmap) ----------
+   Para cada vela, asumimos posiciones abiertas al precio de cierre.
+   Con cada apalancamiento L calculamos dónde se liquidarían:
+     long  -> precio * (1 - 1/L)   (imán abajo)
+     short -> precio * (1 + 1/L)   (imán arriba)
+   Esa "liquidez" persiste en el tiempo hasta que el precio la toca
+   (se liquida). Zonas más brillantes = más liquidez acumulada = imán. */
+function computeHeatmap(){
+  const c=state.candles; if(!c.length) return;
+  const levs=state.leverages, N=c.length, ROWS=CONFIG.rows;
+
+  // rango de datos (todo lo que existe)
+  let lo=Infinity, hi=-Infinity;
+  for(const k of c){ if(k.low<lo)lo=k.low; if(k.high>hi)hi=k.high;
+    for(const L of levs){ const dl=k.close*(1-1/L), sl=k.close*(1+1/L);
+      if(dl<lo)lo=dl; if(sl>hi)hi=sl; } }
+  const pad=(hi-lo)*0.015; lo-=pad; hi+=pad;
+  state.priceLo=lo; state.priceHi=hi;
+  if(!state.userZoom || state.viewLo==null){ state.viewLo=lo; state.viewHi=hi; }
+  if(state.x0==null || !state.userZoomX){ state.x0=0; state.x1=N-1; }
+  else { state.x0=Math.max(0,Math.min(state.x0,N-1)); state.x1=Math.max(state.x0+1,Math.min(state.x1,N-1)); }
+
+  // rango de BINNING = lo que se ve (con zoom da máxima nitidez), si no, todo
+  const bLo=lo, bHi=hi;                  // grid siempre sobre TODO el rango -> prioridades estables
+  const bucket=(bHi-bLo)/ROWS;
+  const rowOf=p=>{ const r=Math.floor((p-bLo)/bucket); return (r<0||r>=ROWS)? -1 : r; };
+
+  const grid=Array.from({length:N},()=>new Float64Array(ROWS));
+  let active=[]; const perL=1/levs.length;
+
+  for(let i=0;i<N;i++){
+    const k=c[i]; const still=[];
+    let w=k.qvol;                                        // por defecto: volumen
+    if(state.oiMap && state.weightMode!=="vol"){
+      if(state.weightMode==="oi") w=k.oi||0;             // OI total
+      else { const prev=i>0?(c[i-1].oi||0):0; w=Math.abs((k.oi||0)-prev)||0; }  // OI Δ (posiciones nuevas)
+    }
+    for(const a of active){
+      if(a.price>=k.low && a.price<=k.high){        // liquidada en esta vela
+        if(a.row>=0) for(let col=a.start; col<=i; col++) grid[col][a.row]+=a.vol;
+      } else still.push(a);
+    }
+    active=still;
+    // reparto REAL long/short según volumen taker (compra vs venta agresiva)
+    let lf = (k.qvol>0) ? (k.tbq||0)/k.qvol : 0.5;
+    if(lf<0)lf=0; if(lf>1)lf=1; const sf=1-lf;
+    for(const L of levs){
+      const dl=k.close*(1-1/L), sl=k.close*(1+1/L);
+      active.push({row:rowOf(dl),price:dl,vol:w*lf*perL,start:i});   // longs -> liquidez abajo
+      active.push({row:rowOf(sl),price:sl,vol:w*sf*perL,start:i});   // shorts -> liquidez arriba
+    }
+  }
+  for(const a of active){ if(a.row>=0) for(let col=a.start; col<N; col++) grid[col][a.row]+=a.vol; }
+
+  // normalización por percentil (para el color)
+  const vals=[];
+  for(let i=0;i<N;i++) for(let r=0;r<ROWS;r++){ const v=grid[i][r]; if(v>0)vals.push(v); }
+  vals.sort((a,b)=>a-b);
+  const pN = vals.length? vals[Math.floor(vals.length*CONFIG.normPct)] : 1;
+
+  // PERFIL = máximo de liquidez por nivel a lo largo del tiempo.
+  // Así, lo que se ve amarillo (fuerte) en el heatmap coincide con la barra del panel.
+  const profile=new Float64Array(ROWS);
+  for(let r=0;r<ROWS;r++){ let mx=0; for(let i=0;i<N;i++){ const v=grid[i][r]; if(v>mx)mx=v; } profile[r]=mx; }
+
+  state.grid=grid; state.gridMax=pN||1;
+  state.binLo=bLo; state.binHi=bHi; state.bucket=bucket;
+  state.profile=profile;
+
+  // zonas = PICOS del perfil (agrupa filas contiguas en una sola banda)
+  const price=state.livePrice||c[N-1].close;
+  let pmaxP=0; for(let r=0;r<ROWS;r++) if(profile[r]>pmaxP) pmaxP=profile[r];
+  const MINV = pmaxP*0.06;                     // ignora ruido muy débil
+  const zones=[];
+  let r=0;
+  while(r<ROWS){
+    if(profile[r]<=MINV){ r++; continue; }
+    // recorre la banda contigua y se queda con su fila más fuerte
+    let best=r, bv=profile[r], e=r;
+    while(e+1<ROWS && profile[e+1]>MINV){ e++; if(profile[e]>bv){ bv=profile[e]; best=e; } }
+    zones.push({price:bLo+(best+0.5)*bucket, v:bv, above:(bLo+(best+0.5)*bucket)>price, row:best});
+    r=e+1;
+  }
+  zones.sort((a,b)=>b.v-a.v);
+  state.topZones=zones.slice(0,16);
+}
+
+// PERFIL DE VOLUMEN VISIBLE (VRVP): se recalcula con el zoom, sobre las velas y precios en pantalla
+function computeVP(){
+  const c=state.candles; if(!c.length || state.viewLo==null) return;
+  const VR=Math.max(20,Math.min(2000,state.vpRows||150));
+  const lo=state.viewLo, hi=state.viewHi, vpk=(hi-lo)/VR;
+  const i0=Math.max(0,Math.floor(state.x0)), i1=Math.min(c.length-1,Math.ceil(state.x1));
+  const vp=new Float64Array(VR);
+  for(let i=i0;i<=i1;i++){ const k=c[i]; const vol=k.qvol||0; if(vol<=0)continue;
+    let r0=Math.floor((k.low-lo)/vpk), r1=Math.floor((k.high-lo)/vpk);
+    if(r1<0||r0>=VR) continue;                       // vela fuera del rango visible
+    if(r0<0)r0=0; if(r1>=VR)r1=VR-1; if(r1<r0){const t=r0;r0=r1;r1=t;}
+    const per=vol/(r1-r0+1); for(let r=r0;r<=r1;r++) vp[r]+=per;
+  }
+  let poc=0, pv=0; for(let r=0;r<VR;r++){ if(vp[r]>pv){pv=vp[r];poc=r;} }
+  state.vp=vp; state.vpPoc=poc; state.vpMax=pv||1; state.vpLo=lo; state.vpBucket=vpk; state.vpN=VR;
+}
+
+/* ---------- COLOR ---------- */
+const STOPS=[
+ [0.00,[10,14,26,0]],[0.12,[20,70,85,0.32]],[0.34,[26,135,140,0.6]],
+ [0.56,[38,190,175,0.75]],[0.76,[130,215,110,0.88]],
+ [0.90,[220,225,70,0.95]],[1.0,[255,245,140,1]]];
+function heat(t){
+  if(t<=0) return null;
+  for(let i=1;i<STOPS.length;i++){ if(t<=STOPS[i][0]){
+    const a=STOPS[i-1], b=STOPS[i], f=(t-a[0])/(b[0]-a[0]);
+    const c0=a[1],c1=b[1];
+    return `rgba(${(c0[0]+(c1[0]-c0[0])*f)|0},${(c0[1]+(c1[1]-c0[1])*f)|0},${(c0[2]+(c1[2]-c0[2])*f)|0},${c0[3]+(c1[3]-c0[3])*f})`;
+  }}
+  return "rgba(255,242,150,1)";
+}
+
+/* ---------- LAYOUT ---------- */
+function resizeCanvas(){
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const w=cv.clientWidth, h=cv.clientHeight;
+  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  buffers.forEach((b,i)=>{ b.width=cv.width; b.height=cv.height; bctx[i].setTransform(dpr,0,0,dpr,0,0); });
+}
+function layout(){                       // SOLO calcula geometría, NO toca el tamaño (evita el negro)
+  const w=cv.clientWidth, h=cv.clientHeight;
+  const L={ w,h, top:12, bottom:h-26,
+    heatL:8, heatR:Math.round(w*0.63),
+    axisX:Math.round(w*0.63)+2,
+    profL:Math.round(w*0.71), profR:w-8 };
+  L.plotH=L.bottom-L.top; L.heatW=L.heatR-L.heatL; L.profW=L.profR-L.profL;
+  state.layout=L; return L;
+}
+const priceToY=(p)=>{ const L=state.layout;
+  return L.top + (1-(p-state.viewLo)/(state.viewHi-state.viewLo))*L.plotH; };
+const yToPrice=(y)=>{ const L=state.layout;
+  return state.viewLo + (1-(y-L.top)/L.plotH)*(state.viewHi-state.viewLo); };
+
+/* ---------- CAPA ESTÁTICA (heatmap + ejes + perfil) ---------- */
+function buildStatic(){
+  const L=layout(); if(!state.grid) return;
+  if(state.showVP) computeVP();               // VRVP: se recalcula con el zoom
+  const bi=curBuf^1, o=bctx[bi];              // dibuja en el buffer oculto
+  o.fillStyle="#0a0e17"; o.fillRect(0,0,L.w,L.h);
+
+  // --- heatmap ---
+  const g=state.grid, N=g.length, ROWS=CONFIG.rows;
+  const ch=L.plotH/ROWS;
+  const x0=state.x0, x1=state.x1, cwPx=L.heatW/((x1-x0+1)||1);
+  const colToX=i=>L.heatL+(i-x0)*cwPx;
+  const i0=Math.max(0,Math.floor(x0)), i1=Math.min(N-1,Math.ceil(x1));
+  o.save(); o.beginPath(); o.rect(L.heatL,L.top,L.heatW,L.plotH); o.clip();
+  for(let r=0;r<ROWS;r++){
+    const yT=priceToY(state.binLo+(r+1)*state.bucket);
+    const yB=priceToY(state.binLo+r*state.bucket);
+    if(yB<L.top || yT>L.bottom) continue;
+    const hh=(yB-yT)+0.6;
+    for(let i=i0;i<=i1;i++){ const v=g[i][r]; if(v<=0)continue;
+      const t=Math.pow(Math.min(v/state.gridMax,1),CONFIG.gamma); const col=heat(t); if(!col)continue;
+      o.fillStyle=col; o.fillRect(colToX(i), yT, cwPx+0.6, hh);
+    }
+  }
+  o.restore();
+
+  o.restore();
+
+  // --- velas japonesas sobre el heatmap (price action) ---
+  if(state.showCandles){
+    o.save(); o.beginPath(); o.rect(L.heatL,L.top,L.heatW,L.plotH); o.clip();
+    const bw=Math.max(cwPx*0.6,1);
+    for(let i=i0;i<=i1;i++){ if(i===N-1)continue; const k=state.candles[i]; if(!k)continue;
+      const xc=colToX(i)+cwPx/2;
+      const yH=priceToY(k.high), yL=priceToY(k.low), yO=priceToY(k.open), yC=priceToY(k.close);
+      const up=k.close>=k.open;
+      // mecha con contorno oscuro
+      o.strokeStyle="rgba(0,0,0,.6)"; o.lineWidth=Math.min(bw,3);
+      o.beginPath(); o.moveTo(xc,yH); o.lineTo(xc,yL); o.stroke();
+      o.strokeStyle=up?"#b0ffd8":"#ffc4d0"; o.lineWidth=1;
+      o.beginPath(); o.moveTo(xc,yH); o.lineTo(xc,yL); o.stroke();
+      const bt=Math.min(yO,yC), bh=Math.max(Math.abs(yC-yO),1);
+      o.fillStyle=up?"#23dc7d":"#ff465f";
+      o.fillRect(xc-bw/2, bt, bw, bh);
+      o.strokeStyle="rgba(0,0,0,.7)"; o.lineWidth=0.8; o.strokeRect(xc-bw/2, bt, bw, bh);
+    }
+    o.restore();
+  }
+
+  // --- PERFIL DE VOLUMEN REAL (filas propias, a la izquierda + POC) ---
+  if(state.showVP && state.vp){
+    o.save(); o.beginPath(); o.rect(L.heatL,L.top,L.heatW,L.plotH); o.clip();
+    const VR=state.vpN, vpW=L.heatW*state.vpWidth;
+    const rh0=L.plotH*state.vpBucket/(state.viewHi-state.viewLo);   // alto de cada fila en px
+    for(let r=0;r<VR;r++){ const v=state.vp[r]; if(v<=0)continue;
+      const p=state.vpLo+(r+0.5)*state.vpBucket, y=priceToY(p);
+      if(y<L.top-2||y>L.bottom+2)continue;
+      const len=(v/state.vpMax)*vpW, bh=Math.max(rh0*state.vpThick,0.8);
+      o.fillStyle= r===state.vpPoc? "rgba(255,120,220,.75)":"rgba(205,216,240,.4)";
+      o.fillRect(L.heatL, y-bh/2, len, bh);
+    }
+    // línea POC (precio con más volumen real negociado)
+    const pocP=state.vpLo+(state.vpPoc+0.5)*state.vpBucket, py=priceToY(pocP);
+    if(py>=L.top&&py<=L.bottom){
+      o.strokeStyle="rgba(255,120,220,.85)"; o.lineWidth=1.4; o.setLineDash([6,4]);
+      o.beginPath(); o.moveTo(L.heatL,py); o.lineTo(L.heatR,py); o.stroke(); o.setLineDash([]);
+      o.font="bold 10px Segoe UI"; o.textBaseline="middle"; o.textAlign="left";
+      const txt="POC "+fmt(pocP), tw=o.measureText(txt).width;
+      o.fillStyle="rgba(45,10,40,.9)"; o.fillRect(L.heatL+vpW+4, py-8, tw+8, 16);
+      o.fillStyle="#ff9fe0"; o.fillText(txt, L.heatL+vpW+8, py+0.5);
+    }
+    o.restore();
+  }
+
+  // --- zonas de TEMPORALIDAD MAYOR (violeta) superpuestas ---
+  if(state.showHTF && state.htfZones && state.htfZones.length){
+    o.textBaseline="middle"; o.font="bold 10px Segoe UI"; o.textAlign="left";
+    const hlab=state.htfTf||"", hx=L.heatL+Math.round(L.heatW*0.34); let hpl=[];
+    state.htfZones.slice(0,4).forEach(z=>{
+      const y=priceToY(z.price); if(y<L.top+2||y>L.bottom-2) return;
+      if(hpl.some(py=>Math.abs(py-y)<14)) return; hpl.push(y);
+      o.strokeStyle="rgba(180,130,255,.7)"; o.lineWidth=1.4; o.setLineDash([8,5]);
+      o.beginPath(); o.moveTo(L.heatL,y); o.lineTo(L.heatR,y); o.stroke(); o.setLineDash([]);
+      const txt=hlab+" · "+fmt(z.price);
+      const tw=o.measureText(txt).width;
+      o.fillStyle="rgba(35,18,60,.92)"; o.fillRect(hx, y-8, tw+10, 16);
+      o.fillStyle="#c9a8ff"; o.fillText(txt, hx+5, y+0.5);
+    });
+  }
+
+  // --- líneas de zonas con el COLOR DE SU NIVEL (Clave/Alta/Media/Baja) ---
+  o.textBaseline="middle"; o.font="bold 10.5px Segoe UI";
+  const hPlaced=[]; let hc=0;
+  state.topZones.forEach((z,i)=>{
+    if(hc>=12) return;
+    const y=priceToY(z.price); if(y<L.top+2||y>L.bottom-2) return;
+    const crowded = hPlaced.some(py=>Math.abs(py-y)<11);   // solo oculta el texto
+    hPlaced.push(y); hc++;
+    const tt=tierOf(z.v), col=tt.color;
+    const isTop=(i===0);
+    o.strokeStyle=col; o.globalAlpha=isTop?0.9:0.45;
+    o.lineWidth=isTop?1.8:1; o.setLineDash(isTop?[]:[3,3]);
+    o.beginPath(); o.moveTo(L.heatL,y); o.lineTo(L.heatR,y); o.stroke();
+    o.setLineDash([]); o.globalAlpha=1;
+    // punto del nivel siempre; etiqueta solo si hay hueco
+    o.fillStyle=col; o.beginPath(); o.arc(L.heatL+7,y,isTop?4.5:3.5,0,7); o.fill();
+    if(crowded) return;
+    const txt=(isTop?"★ ":"")+usdFmt(z.v);
+    const tw=o.measureText(txt).width;
+    o.fillStyle="rgba(4,8,15,.9)"; o.fillRect(L.heatL+14,y-8,tw+8,16);
+    o.fillStyle=col; o.textAlign="left";
+    o.fillText(txt, L.heatL+18, y+0.5);
+  });
+
+  // --- eje de precio ---
+  o.font="11px Segoe UI"; o.textBaseline="middle";
+  o.strokeStyle="rgba(255,255,255,.05)"; o.lineWidth=1;
+  const steps=8;
+  for(let s=0;s<=steps;s++){
+    const p=state.viewLo+(state.viewHi-state.viewLo)*s/steps; const y=priceToY(p);
+    o.beginPath(); o.moveTo(L.heatL,y); o.lineTo(L.heatR,y); o.stroke();
+    o.fillStyle="#8393ab"; o.textAlign="left"; o.fillText(fmt(p), L.axisX+4, y);
+  }
+
+  // --- eje de tiempo ---
+  o.fillStyle="#6b7a92"; o.textAlign="center"; o.textBaseline="top";
+  const c=state.candles; const tsteps=5;
+  for(let s=0;s<=tsteps;s++){ const idx=Math.max(0,Math.min(N-1,Math.round(x0+(x1-x0)*s/tsteps)));
+    const x=colToX(idx); const d=new Date(c[idx].t);
+    const lab=(state.tf==="1d")? `${d.getDate()}/${d.getMonth()+1}`
+             : `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    o.fillText(lab, Math.min(Math.max(x,L.heatL+14),L.heatR-14), L.bottom+5);
+  }
+
+  // --- panel perfil (LIQUIDEZ AHORA) estilo Coinglass ---
+  o.fillStyle="#080c14"; o.fillRect(L.profL-2,L.top-2,L.profW+4,L.plotH+4);
+  o.save(); o.beginPath(); o.rect(L.profL-2,L.top,L.profW+6,L.plotH); o.clip();
+  const prof=state.profile; let pmax=0; for(const v of prof) if(v>pmax)pmax=v; if(pmax<=0)pmax=1;
+  const price=state.livePrice||c[N-1].close;
+  const barW=L.profW*0.62, labelX=L.profL+L.profW*0.64;
+  const rowH=Math.max(L.plotH*state.bucket/(state.viewHi-state.viewLo),0.8);
+  const barLen=v=>Math.sqrt(Math.min(v/pmax,1))*barW;   // raíz -> zonas pequeñas más visibles
+
+  // barras por nivel: cyan arriba / rojo abajo del precio
+  for(let r=0;r<ROWS;r++){ const v=prof[r]; if(v<=0)continue;
+    const p=state.binLo+(r+0.5)*state.bucket, above=p>price;
+    const y=priceToY(p); if(y<L.top-2||y>L.bottom+2)continue;
+    const len=barLen(v);
+    o.fillStyle= above? "rgba(45,195,205,.6)" : "rgba(235,65,85,.55)";
+    o.fillRect(L.profL, y-rowH/2, len, Math.max(rowH*0.85,0.8));
+  }
+
+  // curva acumulada desde el precio hacia fuera (verde arriba / rojo abajo)
+  const pRow=Math.max(0,Math.min(ROWS-1,Math.floor((price-state.binLo)/state.bucket)));
+  const aC=[],bC=[]; let cu=0,mC=1;
+  for(let r=pRow;r<ROWS;r++){ cu+=prof[r]; aC.push([r,cu]); if(cu>mC)mC=cu; }
+  cu=0; for(let r=pRow;r>=0;r--){ cu+=prof[r]; bC.push([r,cu]); if(cu>mC)mC=cu; }
+  o.lineWidth=1.6;
+  o.strokeStyle="rgba(60,225,140,.85)"; o.beginPath();
+  aC.forEach((q,i)=>{ const x=L.profL+(q[1]/mC)*barW, y=priceToY(state.binLo+(q[0]+0.5)*state.bucket); i?o.lineTo(x,y):o.moveTo(x,y); }); o.stroke();
+  o.strokeStyle="rgba(255,70,90,.85)"; o.beginPath();
+  bC.forEach((q,i)=>{ const x=L.profL+(q[1]/mC)*barW, y=priceToY(state.binLo+(q[0]+0.5)*state.bucket); i?o.lineTo(x,y):o.moveTo(x,y); }); o.stroke();
+
+  // etiquetas de zonas PRINCIPALES: color según su nivel (Clave/Alta/Media/Baja)
+  o.font="bold 9px Segoe UI"; o.textBaseline="middle"; o.textAlign="left";
+  const placed=[], minGap=13; let count=0;
+  state.topZones.forEach((z,idx)=>{
+    if(count>=12) return;
+    const y=priceToY(z.price); if(y<L.top+2||y>L.bottom-2) return;
+    const crowded = placed.some(py=>Math.abs(py-y)<minGap);
+    placed.push(y); count++;
+    const isTop=idx===0, len=Math.max(barLen(z.v),5);
+    const col=tierOf(z.v).color;
+    o.fillStyle=col;
+    o.fillRect(L.profL, y-rowH/2, len, Math.max(rowH,2.5));
+    if(crowded) return;                             // barra sí, etiqueta no
+    const txt=(isTop?"★ ":"")+fmt(z.price)+" "+usdFmt(z.v);
+    const tw=o.measureText(txt).width;
+    o.fillStyle="rgba(4,8,15,.88)"; o.fillRect(labelX-2, y-7, tw+5, 14);
+    o.fillStyle=col;
+    o.fillText(txt, labelX, y+0.5);
+  });
+  o.restore();
+
+  o.fillStyle="#8393ab"; o.font="10px Segoe UI"; o.textAlign="left"; o.textBaseline="top";
+  o.fillText("ZONAS DE LIQUIDEZ ("+(state.weightMode==="oi"?"OI total":state.weightMode==="oidelta"?"OI Δ":"Volumen")+")", L.profL, L.top-0.5);
+
+  // --- leyenda de color ---
+  const lgX=L.heatL+8, lgY=L.top+8, lgW=150, lgH=9;
+  o.fillStyle="rgba(6,9,16,.82)"; o.fillRect(lgX-6,lgY-6,lgW+90,lgH+22);
+  for(let i=0;i<lgW;i++){ const tt=i/lgW; const cc=heat(Math.pow(tt,CONFIG.gamma));
+    o.fillStyle=cc||"rgba(10,15,28,1)"; o.fillRect(lgX+i,lgY,1.4,lgH); }
+  o.strokeStyle="rgba(255,255,255,.15)"; o.lineWidth=1; o.strokeRect(lgX,lgY,lgW,lgH);
+  o.fillStyle="#8393ab"; o.font="10px Segoe UI"; o.textBaseline="middle"; o.textAlign="left";
+  o.fillText("poca", lgX, lgY+lgH+9);
+  o.fillText("mucha liquidez (imán)", lgX+lgW+8, lgY+lgH/2);
+
+  state.staticCanvas=buffers[bi]; curBuf=bi;   // swap solo al terminar: nunca se ve a medias
+}
+
+/* ---------- FRAME (dinámico: precio vivo + burbujas) ---------- */
+function frame(){
+  const L=state.layout;
+  if(L && state.staticCanvas){
+    ctx.drawImage(state.staticCanvas,0,0,cv.width,cv.height,0,0,L.w,L.h);
+    const now=performance.now();
+
+    // vela ACTUAL en vivo: se dibuja aquí (dinámico) para que siga EXACTO al precio
+    if(state.showCandles && state.candles.length && state.livePrice && state.x0!=null){
+      const N=state.candles.length, k=state.candles[N-1], lp=state.livePrice;
+      const cwPx=L.heatW/((state.x1-state.x0+1)||1);
+      const xc=L.heatL+((N-1)-state.x0)*cwPx + cwPx/2;
+      if(xc>=L.heatL-2 && xc<=L.heatR+2){
+        const hi=Math.max(k.high,lp), lo=Math.min(k.low,lp);
+        const yH=priceToY(hi), yL=priceToY(lo), yO=priceToY(k.open), yC=priceToY(lp);
+        const up=lp>=k.open, bw=Math.max(cwPx*0.6,1.2);
+        ctx.save(); ctx.beginPath(); ctx.rect(L.heatL,L.top,L.heatW,L.plotH); ctx.clip();
+        // mecha: contorno oscuro + línea clara encima (se ve sobre amarillo)
+        ctx.strokeStyle="rgba(0,0,0,.7)"; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(xc,yH); ctx.lineTo(xc,yL); ctx.stroke();
+        ctx.strokeStyle=up?"#c8ffe4":"#ffd0da"; ctx.lineWidth=1.2;
+        ctx.beginPath(); ctx.moveTo(xc,yH); ctx.lineTo(xc,yL); ctx.stroke();
+        // cuerpo con borde oscuro para contraste
+        const bt=Math.min(yO,yC), bh=Math.max(Math.abs(yC-yO),1.5);
+        ctx.fillStyle=up?"#1fe07d":"#ff4560"; ctx.fillRect(xc-bw/2, bt, bw, bh);
+        ctx.strokeStyle="rgba(0,0,0,.85)"; ctx.lineWidth=1; ctx.strokeRect(xc-bw/2, bt, bw, bh);
+        ctx.restore();
+      }
+    }
+
+    // línea de precio actual
+    if(state.livePrice){
+      const y=priceToY(state.livePrice);
+      if(y>=L.top && y<=L.bottom){
+        ctx.strokeStyle="rgba(55,192,255,.9)"; ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
+        ctx.beginPath(); ctx.moveTo(L.heatL,y); ctx.lineTo(L.profR,y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font="bold 11px Segoe UI"; ctx.textAlign="left"; ctx.textBaseline="middle";
+        const tag=fmt(state.livePrice);
+        const tw=ctx.measureText(tag).width+10;
+        ctx.fillStyle="#0b2233"; ctx.fillRect(L.heatL+2,y-8,tw,16);
+        ctx.fillStyle="#37c0ff"; ctx.fillText(tag,L.heatL+7,y+0.5);
+      }
+    }
+
+    // burbujas de liquidaciones reales (drift + fade)
+    ctx.save(); ctx.beginPath(); ctx.rect(L.heatL,L.top,L.heatW,L.plotH); ctx.clip();
+    state.liqs = state.liqs.filter(l=>now-l.t < CONFIG.bubbleLife);
+    for(const l of state.liqs){
+      const prog=(now-l.t)/CONFIG.bubbleLife;
+      const y=priceToY(l.price);
+      const x=L.heatR - prog*(L.heatW*0.42);
+      const rad=Math.min(30,Math.max(3,Math.sqrt(l.usd)/55));
+      const alpha=(1-prog)*0.85;
+      const col = l.side==="SELL" ? "255,91,110" : "38,214,124"; // SELL=long liquidado(rojo)
+      ctx.fillStyle=`rgba(${col},${alpha*0.5})`;
+      ctx.beginPath(); ctx.arc(x,y,rad,0,7); ctx.fill();
+      ctx.strokeStyle=`rgba(${col},${alpha})`; ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.arc(x,y,rad,0,7); ctx.stroke();
+    }
+    ctx.restore();
+
+    // línea del cursor (crosshair) — sigue el mouse por todo el gráfico
+    if(state.cross!=null){ const y=state.cross;
+      ctx.strokeStyle="rgba(255,255,255,.28)"; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(L.heatL,y); ctx.lineTo(L.profR,y); ctx.stroke(); ctx.setLineDash([]);
+      // precio del cursor a la derecha
+      const cp=yToPrice(y);
+      ctx.font="bold 10.5px Segoe UI"; ctx.textBaseline="middle"; ctx.textAlign="left";
+      const tag=fmt(cp), tw=ctx.measureText(tag).width;
+      ctx.fillStyle="rgba(40,48,64,.95)"; ctx.fillRect(L.axisX+2, y-8, tw+8, 16);
+      ctx.fillStyle="#e6edf6"; ctx.fillText(tag, L.axisX+6, y+0.5);
+    }
+
+    // crosshair del hover sobre zona (punto amarillo)
+    if(state.hover){ const y=state.hover.y;
+      if(y>=L.top&&y<=L.bottom){
+        ctx.strokeStyle="rgba(255,215,90,.55)"; ctx.lineWidth=1; ctx.setLineDash([4,3]);
+        ctx.beginPath(); ctx.moveTo(L.heatL,y); ctx.lineTo(L.profR,y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle="#ffd75c"; ctx.beginPath(); ctx.arc(L.profL,y,3.5,0,7); ctx.fill();
+      }
+    }
+
+    // etiquetas flotantes de prioridad (orden grande #1 destacada)
+    drawPriorityBadges(L);
+
+  }
+  requestAnimationFrame(frame);
+}
+
+function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y);
+  c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+
+function drawPriorityBadges(L){
+  const zs = state.topZones ? state.topZones.slice(0,4) : [];
+  if(!zs.length) return;
+  ctx.textBaseline="middle";
+  const used=[];
+  for(let i=zs.length-1;i>=0;i--){          // de la más débil a la #1 (queda encima)
+    const z=zs[i], y=priceToY(z.price);
+    if(y<L.top+10||y>L.bottom-10) continue;
+    if(used.some(uy=>Math.abs(uy-y)<20)) continue;   // evita superponer píldoras
+    used.push(y);
+    const top=(i===0), tt=tierOf(z.v), col=tt.color;
+    ctx.font="bold "+(top?11.5:10)+"px Segoe UI";
+    const txt=fmt(z.price)+"  "+usdFmt(z.v);
+    const tw=ctx.measureText(txt).width;
+    const rc=top?10:8, h=top?25:20, arrow=7;
+    const w=rc*2+8+tw+11;
+    const x=L.heatR+arrow+3;                 // en el hueco del eje, a la derecha del heatmap
+    if(top){ ctx.shadowColor=col; ctx.shadowBlur=14; }
+    ctx.fillStyle= top? col : "rgba(16,24,38,.96)";
+    roundRect(ctx,x,y-h/2,w,h,h/2); ctx.fill();
+    // flecha apuntando a la IZQUIERDA (al nivel en el heatmap)
+    ctx.beginPath(); ctx.moveTo(x,y-6); ctx.lineTo(x-arrow,y); ctx.lineTo(x,y+6); ctx.closePath(); ctx.fill();
+    ctx.shadowBlur=0;
+    if(!top){ ctx.strokeStyle=col; ctx.lineWidth=1.2; roundRect(ctx,x,y-h/2,w,h,h/2); ctx.stroke(); }
+    // círculo con el número de prioridad
+    const cx=x+rc+5, cy=y;
+    ctx.beginPath(); ctx.arc(cx,cy,rc,0,7);
+    ctx.fillStyle= top? "rgba(0,0,0,.35)":col; ctx.fill();
+    ctx.textAlign="center"; ctx.fillStyle= top? "#fff":"#0a0e17";
+    ctx.font="bold "+(top?12:9.5)+"px Segoe UI"; ctx.fillText(String(i+1), cx, cy+0.5);
+    // texto precio + monto
+    ctx.textAlign="left"; ctx.font="bold "+(top?11.5:10)+"px Segoe UI";
+    ctx.fillStyle= top? "#12080a":"#e6edf6";
+    ctx.fillText(txt, cx+rc+5, cy+0.5);
+  }
+  ctx.textAlign="left";
+}
+
+/* ---------- WEBSOCKET (kline vivo + liquidaciones reales) ---------- */
+function closeWS(){
+  if(state.ws){ try{state.ws.onclose=null; state.ws.close();}catch(e){} state.ws=null; }
+  if(state.tws){ try{state.tws.onclose=null; state.tws.close();}catch(e){} state.tws=null; }
+  clearTimeout(state.treconnectT);
+}
+function connectTradeWS(){
+  const s=state.symbol.toLowerCase();
+  const ws=new WebSocket(`wss://fstream.binance.com/ws/${s}@aggTrade`);  // stream dedicado
+  state.tws=ws;
+  ws.onmessage=e=>{ let d; try{d=JSON.parse(e.data);}catch(_){return;} if(d.e==="aggTrade") handleTrade(d); };
+  ws.onerror=()=>{ try{ws.close();}catch(_){} };
+  ws.onclose=()=>{ if(state.tws!==ws) return; state.tws=null;
+    if(!state.switching) state.treconnectT=setTimeout(connectTradeWS,2500); };
+}
+function connectWS(){
+  closeWS();
+  const s=state.symbol.toLowerCase();
+  const url=`${CONFIG.wsBase}${s}@kline_${state.tf}/${s}@forceOrder`;
+  const ws=new WebSocket(url); state.ws=ws;
+  ws.onopen=()=>setStatus("en vivo · "+state.symbol.replace("USDT",""),"ok");
+  ws.onmessage=e=>{
+    let m; try{m=JSON.parse(e.data);}catch(_){return;}
+    const d=m.data; if(!d)return;
+    if(d.e==="kline") handleKline(d.k);
+    else if(d.e==="forceOrder") handleLiq(d.o);
+  };
+  ws.onerror=()=>{ try{ws.close();}catch(_){} };
+  ws.onclose=()=>{ if(state.ws!==ws) return;         // ignora cierres de sockets viejos
+    state.ws=null; if(!state.switching){ setStatus("reconectando…","");
+      state.reconnectT=setTimeout(connectWS,2500);} };
+  connectTradeWS();                                  // operaciones en vivo (aparte)
+}
+// precio en tiempo real (cada trade, si el stream llega): mueve la línea y la vela
+function handleTrade(d){
+  const price=+d.p; if(!price) return;
+  state.livePrice=price;
+  $("#price b").textContent=fmt(price);
+  const c=state.candles; if(c.length){ const last=c[c.length-1];
+    last.close=price; if(price>last.high)last.high=price; if(price<last.low)last.low=price; }
+}
+function handleKline(k){
+  const c=state.candles; if(!c.length)return;
+  const last=c[c.length-1];
+  const kt=k.t, price=+k.c;
+  if(kt===last.t){
+    last.open=+k.o; last.high=+k.h; last.low=+k.l; last.close=price; last.volume=+k.v; last.qvol=+k.q; last.tbq=+k.Q;
+  } else if(kt>last.t){
+    c.push({t:kt,open:+k.o,high:+k.h,low:+k.l,close:price,volume:+k.v,qvol:+k.q,tbq:+k.Q,oi:last.oi||0});
+    if(c.length>state.limit)c.shift();
+  } else {
+    last.close=price; if(price>last.high)last.high=price; if(price<last.low)last.low=price;
+  }
+  state.livePrice=price;
+  $("#price b").textContent=fmt(price);
+  state.needCompute=true;
+}
+function handleLiq(o){
+  const price=+(o.ap||o.p), qty=+o.q, usd=price*qty;
+  state.liqs.push({price, usd, side:o.S, t:performance.now()});
+  if(state.liqs.length>400) state.liqs.shift();
+}
+
+/* ---------- PANEL DE OBJETIVOS (prioridad, tiempo real) ---------- */
+/* ---------- SEGUIMIENTO DE ZONAS BARRIDAS (estadística real) ---------- */
+const TRACK_TOL = 0.0008;   // 0.08% de tolerancia para considerar "tocada"
+function trackZones(){
+  if(!state.showTrack || !state.livePrice || !state.topZones.length) return;
+  const price=state.livePrice, now=Date.now();
+  // registra las 3 zonas principales (una vez cada una, mientras no estén tocadas)
+  state.topZones.slice(0,3).forEach((z,i)=>{
+    const exists=state.track.some(t=>Math.abs(t.price-z.price)/z.price < TRACK_TOL);
+    if(!exists && Math.abs(z.price-price)/price > TRACK_TOL){
+      state.track.push({price:z.price, rank:i+1, born:now, bornPrice:price,
+        above:z.price>price, hit:false, usd:z.v});
+    }
+  });
+  // comprueba si el precio tocó alguna zona pendiente
+  const c=state.candles; const last=c.length? c[c.length-1] : null;
+  for(const t of state.track){
+    if(t.hit) continue;
+    const tol=t.price*TRACK_TOL;
+    const touched = last ? (last.low<=t.price+tol && last.high>=t.price-tol)
+                         : (Math.abs(price-t.price)<=tol);
+    if(touched){ t.hit=true; t.hitAt=now; state.hits++; }
+  }
+  // caduca las que llevan más de 4h sin tocarse -> fallo
+  const MAXAGE=4*3600*1000;
+  state.track = state.track.filter(t=>{
+    if(!t.hit && now-t.born>MAXAGE){ state.misses++; return false; }
+    if(t.hit && now-t.hitAt>10*60000) return false;   // limpia tocadas tras 10 min
+    return true;
+  });
+  if(state.track.length>40) state.track.splice(0, state.track.length-40);
+}
+
+/* ---------- VOLUMEN 24h (real, en vivo) ---------- */
+async function poll24h(){
+  try{
+    const r=await fetch(`${CONFIG.ticker24}?symbol=${state.symbol}`);
+    if(!r.ok) return;
+    const d=await r.json();
+    const v=$("#vol24"), c=$("#chg24");
+    if(v) v.textContent=usdFmt(+d.quoteVolume);
+    if(c){ const p=+d.priceChangePercent;
+      c.textContent=(p>=0?"+":"")+p.toFixed(2)+"%";
+      c.style.color = p>=0? "#26d67c":"#ff5b6e"; }
+  }catch(e){}
+}
+
+function updateTargets(){
+  const box=$("#targets"); if(!box) return;
+  if(!state.topZones.length || !state.livePrice){ box.innerHTML=""; return; }
+  const price=state.livePrice;
+  let h=`<div class="tt">🎯 objetivos de liquidez · prioridad</div>`;
+  h+=`<div class="cp">Precio actual: ${fmt(price)}</div>`;
+  state.topZones.slice(0,8).forEach((z,i)=>{
+    const up=z.price>price, dist=(z.price-price)/price*100;
+    // estado de barrido (si el seguimiento está activo)
+    let st="";
+    if(state.showTrack){
+      const t=state.track.find(x=>Math.abs(x.price-z.price)/z.price < TRACK_TOL);
+      st = t ? (t.hit ? `<span class="sw hit" title="Barrida">✓</span>`
+                      : `<span class="sw pend" title="Pendiente">○</span>`)
+             : `<span class="sw"></span>`;
+    }
+    const tt=tierOf(z.v);
+    h+=`<div class="row${i===0?' main':''}" title="${tt.name}">`
+      +`<span class="rk">${i+1}</span>`
+      +`<span class="tdot" style="background:${tt.color}"></span>`
+      +`<span class="ar ${up?'up':'dn'}">${up?'▲':'▼'}</span>`
+      +`<span class="pr">${fmt(z.price)}</span>`
+      +`<span class="am" style="color:${tt.color}">${usdFmt(z.v)}</span>`
+      + st
+      +`<span class="ds ${up?'up':'dn'}">${dist>=0?'+':''}${dist.toFixed(1)}%</span>`
+      +`</div>`;
+  });
+  // resumen de aciertos
+  if(state.showTrack){ const tot=state.hits+state.misses;
+    const pct=tot?Math.round(state.hits/tot*100):0;
+    h+=`<div class="swstat">${tot?`Barridas <b style="color:#26d67c">${state.hits}</b>/${tot} · <b>${pct}%</b>`
+      :`Siguiendo ${state.track.length} zona(s)…`}</div>`;
+  }
+  box.innerHTML=h;
+}
+
+/* ---------- TOOLTIP FLOTANTE (zonas principales + bandas amarillas) ---------- */
+function tipHTML(title, price, usdt, coins, coin, side, cum){
+  const t=tierOf(usdt);
+  return `<div class="tp">Zona viva</div>`
+    +`<div class="tr"><small>Precio</small><b>${fmt(price)}</b></div>`
+    +`<div class="tr"><small>Liquidez estimada</small><b style="color:#ffd75c">${usdFmt(usdt)}</b></div>`
+    +`<div class="tr"><small>≈ ${coinFmt(coins)} ${coin}</small></div>`
+    +`<div class="tr"><small>Prioridad</small><b style="color:${t.color}">${t.name}</b></div>`
+    +`<div class="tr"><small>${side}</small><b>${usdFmt(cum)}</b></div>`;
+}
+function placeTip(clientX, anchorY){
+  const L=state.layout, tip=$("#tip"), rect=cv.getBoundingClientRect();
+  tip.style.display="block";
+  const tw=tip.offsetWidth, th=tip.offsetHeight;
+  let tx=clientX-rect.left+16; if(tx+tw>L.w-6) tx=(clientX-rect.left)-tw-16;
+  let ty=anchorY-th/2; if(ty+th>L.h-6) ty=L.h-th-6; if(ty<4) ty=4;
+  tip.style.left=tx+"px"; tip.style.top=ty+"px";
+  state.hover={y:anchorY};
+}
+function showTip(clientX, mouseY){
+  const L=state.layout, tip=$("#tip");
+  if(!L||!state.grid||!state.profile||!state.livePrice||mouseY<L.top||mouseY>L.bottom){ hideTip(); return; }
+  const mouseX=clientX-cv.getBoundingClientRect().left;
+
+  // En el heatmap: cualquier banda con liquidez. En el panel: solo zonas principales.
+  const inHeat  = mouseX>=L.heatL-2 && mouseX<=L.heatR+2;
+  const inPanel = mouseX>=L.profL-2 && mouseX<=L.profR+2;
+  if(!inHeat && !inPanel){ hideTip(); return; }
+
+  const coin=state.symbol.replace("USDT",""), prof=state.profile, ROWS=CONFIG.rows;
+  let pmax=0; for(const v of prof) if(v>pmax)pmax=v; if(pmax<=0){ hideTip(); return; }
+
+  // EN EL PANEL DERECHO: solo sobre una zona PRINCIPAL (no en cualquier parte)
+  if(inPanel && !inHeat){
+    let best=null,bd=1e9;
+    state.topZones.slice(0,10).forEach((z,i)=>{ const zy=priceToY(z.price);
+      if(zy<L.top||zy>L.bottom)return; const d=Math.abs(zy-mouseY); if(d<bd){bd=d;best={z,zy,i};} });
+    if(!best || bd>12){ hideTip(); return; }
+    const z=best.z, r=z.row;
+    const pRw=Math.max(0,Math.min(ROWS-1,Math.floor((state.livePrice-state.binLo)/state.bucket)));
+    let cum=0,side; if(r>=pRw){ for(let i=pRw;i<=r;i++)cum+=prof[i]||0; side="Corta acum. (arriba)"; }
+      else{ for(let i=r;i<=pRw;i++)cum+=prof[i]||0; side="Larga acum. (abajo)"; }
+    tip.innerHTML=tipHTML((best.i===0?"★ ":"")+"Zona #"+(best.i+1), z.price, z.v, z.v/z.price, coin, side, cum);
+    placeTip(clientX, best.zy); return;
+  }
+
+  // EN EL HEATMAP: pico local bajo el cursor (cualquier banda amarilla, ventana adaptada al zoom)
+  const cr=Math.floor((yToPrice(mouseY)-state.binLo)/state.bucket);
+  const rpp=Math.max(0.0001, L.plotH*state.bucket/(state.viewHi-state.viewLo));
+  const win=Math.max(2, Math.min(10, Math.round(6/rpp)));
+  let br=-1, bv=0;
+  for(let d=-win; d<=win; d++){ const r=cr+d; if(r<0||r>=ROWS)continue; if(prof[r]>bv){ bv=prof[r]; br=r; } }
+  const tPeak=Math.pow(Math.min(bv/state.gridMax,1),CONFIG.gamma);   // mismo cálculo que el color del heatmap
+  if(br<0 || tPeak < CONFIG.tipMinT){ hideTip(); return; }           // solo bandas amarillas (fuertes)
+
+  const price=state.binLo+(br+0.5)*state.bucket, y=priceToY(price);
+  let rank=-1;
+  state.topZones.slice(0,10).forEach((z,i)=>{ if(rank<0 && Math.abs(z.row-br)<=1) rank=i; });
+  const title = rank>=0 ? ((rank===0?"★ ":"")+"Zona #"+(rank+1)) : "Liquidez";
+
+  const pRow=Math.max(0,Math.min(ROWS-1,Math.floor((state.livePrice-state.binLo)/state.bucket)));
+  let cum=0, side;
+  if(br>=pRow){ for(let i=pRow;i<=br;i++) cum+=prof[i]||0; side="Corta acum. (arriba)"; }
+  else{ for(let i=br;i<=pRow;i++) cum+=prof[i]||0; side="Larga acum. (abajo)"; }
+
+  tip.innerHTML=tipHTML(title, price, bv, bv/price, coin, side, cum);
+  placeTip(clientX, y);
+}
+function hideTip(){ const t=$("#tip"); if(t) t.style.display="none"; state.hover=null; }
+
+/* ---------- BARRA LARGO/CORTO (velas 1m por REST, confiable) ---------- */
+async function pollLS(){
+  if(!state.candles.length) return;
+  const cfg = LS_POLL[state.tf] || ["1m",5];
+  try{
+    const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=${cfg[0]}&limit=${cfg[1]}`;
+    const r=await fetch(url); if(!r.ok) throw new Error("ls "+r.status);
+    const raw=await r.json();
+    let buy=0, tot=0;
+    for(const k of raw){ buy+=+k[10]; tot+=+k[7]; }   // taker buy quote (10), total quote (7)
+    if(tot>0){ state.lsBuy=buy; state.lsSell=tot-buy; state.lsLive=true; state.lsAt=Date.now(); }
+    // respaldo: sincroniza precio y vela actual (por si el stream no llega)
+    const lastClose=+raw[raw.length-1][4];
+    if(lastClose>0){ state.livePrice=lastClose; $("#price b").textContent=fmt(lastClose);
+      const c=state.candles; if(c.length){ const lc=c[c.length-1];
+        lc.close=lastClose; if(lastClose>lc.high)lc.high=lastClose; if(lastClose<lc.low)lc.low=lastClose; } }
+  }catch(e){ /* mantiene el último valor */ }
+}
+function updateLS(){
+  let buy=state.lsBuy, sell=state.lsSell;
+  if(buy+sell<=0){                                   // aún sin datos: respaldo con velas del chart
+    const c=state.candles; if(!c.length) return;
+    let tb=0,tt=0,n=Math.min(2,c.length);
+    for(let i=c.length-n;i<c.length;i++){ tb+=c[i].tbq||0; tt+=c[i].qvol||0; }
+    if(tt<=0) return; buy=tb; sell=tt-tb;
+  }
+  const tot=buy+sell, lf=buy/tot, sf=1-lf;
+  const lb=$("#lsLongBar"), sb=$("#lsShortBar");
+  lb.style.flexGrow=Math.max(lf,0.001); sb.style.flexGrow=Math.max(sf,0.001);
+  lb.textContent=(lf*100).toFixed(1)+"%"; sb.textContent=(sf*100).toFixed(1)+"%";
+  $("#lsLongVal").textContent=usdFmt(buy);
+  $("#lsShortVal").textContent=usdFmt(sell);
+  const fl=$("#lsFlow");
+  if(fl){
+    if(state.lsLive){ const age=Math.round((Date.now()-(state.lsAt||0))/1000);
+      fl.textContent = age<=2 ? "· en vivo ⚡" : "· hace "+age+"s";
+      fl.style.color = age<=2 ? "#26d67c" : "#ffb020";
+    } else { fl.textContent="· cargando…"; fl.style.color="#7d8ca5"; }
+  }
+  const ll=$("#lsLabel"); if(ll) ll.textContent="Largo / Corto · vol. taker · "+state.tf;
+  const sk=$("#lsSkew");
+  if(lf>=0.5){ sk.textContent="▲ Presión compradora"; sk.style.color="#26d67c"; }
+  else { sk.textContent="▼ Presión vendedora"; sk.style.color="#ff5b6e"; }
+}
+
+/* ---------- LOOPS ---------- */
+// recalcular heatmap si hace falta (throttle) — tiempo real
+setInterval(()=>{ if(state.needCompute && state.candles.length){
+  computeHeatmap(); buildStatic(); updateTargets(); state.needCompute=false; } }, 700);
+// refrescar vela abierta cada 2s
+setInterval(()=>{ if(state.candles.length) state.needCompute=true; }, 2000);
+// objetivos, L/S y seguimiento cada 1s
+setInterval(()=>{
+  updateTargets();
+  updateLS();
+  trackZones();
+},1000);
+// volumen 24h cada 5s
+setInterval(poll24h, 5000);
+// re-sincronizar klines (y OI) cada 60s por si hay drift
+setInterval(async()=>{ if(state.switching||!state.candles.length)return;
+  try{ await fetchKlines(); if(state.weightMode!=="vol"){ await fetchOI(); } applyOItoCandles(); await fetchHTF(); state.needCompute=true; }catch(e){} }, 60000);
+
+window.addEventListener("resize",()=>{ resizeCanvas(); if(state.grid) buildStatic(); });
+setInterval(updateLS, 400);   // barra L/S en vivo
+setInterval(pollLS, 1000);    // datos taker por REST (cada segundo)
+document.addEventListener("click",()=>closeAllDropdowns());
+
+/* ---------- ZOOM / PAN en el eje de precios ---------- */
+let zoomRaf=0;
+function reRender(){ if(zoomRaf) return;
+  zoomRaf=requestAnimationFrame(()=>{ zoomRaf=0; buildStatic(); }); }
+
+cv.addEventListener("wheel",e=>{
+  if(state.viewLo==null||!state.layout) return;
+  e.preventDefault();
+  const rect=cv.getBoundingClientRect(), L=state.layout, N=state.candles.length;
+  // con Shift, muchos navegadores mandan el scroll en deltaX; tomamos el mayor
+  const delta = Math.abs(e.deltaY)>=Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+
+  if(e.shiftKey || (Math.abs(e.deltaX)>Math.abs(e.deltaY))){   // ZOOM HORIZONTAL (anclado a la vela actual)
+    if(state.x0==null){ state.x0=0; state.x1=N-1; }
+    const f=delta>0?1.14:0.88;               // >0 aleja (más velas), <0 acerca
+    let span=(state.x1-state.x0)*f;
+    span=Math.max(8, Math.min(N-1, span));
+    state.x1=N-1;                            // borde derecho fijo = vela actual visible
+    state.x0=Math.max(0,(N-1)-span);
+    state.userZoomX=(state.x0>0);
+    buildStatic();
+    return;
+  }
+
+  // ZOOM VERTICAL (precio)
+  const my=e.clientY-rect.top;
+  const pAt=yToPrice(my);
+  const f=delta>0?1.12:0.89;
+  let lo=pAt-(pAt-state.viewLo)*f, hi=pAt+(state.viewHi-pAt)*f;
+  const dataR=state.priceHi-state.priceLo, minR=dataR*0.006;
+  if(hi-lo>dataR){ lo=state.priceLo; hi=state.priceHi; state.userZoom=false; }
+  else{ if(hi-lo<minR){ const c=(lo+hi)/2; lo=c-minR/2; hi=c+minR/2; } state.userZoom=true; }
+  state.viewLo=lo; state.viewHi=hi; reRender();
+},{passive:false});
+
+let dragging=false, dragY=0, dragX=0;
+cv.addEventListener("mousedown",e=>{ dragging=true; dragY=e.clientY; dragX=e.clientX; cv.style.cursor="grabbing"; });
+window.addEventListener("mouseup",()=>{ if(dragging){ dragging=false; cv.style.cursor="default"; } });
+window.addEventListener("mousemove",e=>{ if(!dragging||state.viewLo==null||!state.layout)return;
+  const L=state.layout, N=state.candles.length;
+  // pan vertical (con tope para no salirse de los datos)
+  const dY=(e.clientY-dragY)/L.plotH*(state.viewHi-state.viewLo); dragY=e.clientY;
+  state.viewLo+=dY; state.viewHi+=dY; state.userZoom=true;
+  const vr=state.viewHi-state.viewLo;
+  let ctr=Math.max(state.priceLo, Math.min(state.priceHi, (state.viewLo+state.viewHi)/2));
+  state.viewLo=ctr-vr/2; state.viewHi=ctr+vr/2;
+  // pan horizontal
+  const dxpx=e.clientX-dragX; dragX=e.clientX;
+  if(state.x0!=null){ const dC=-dxpx/L.heatW*(state.x1-state.x0);
+    let a=state.x0+dC, b=state.x1+dC;
+    if(a<0){ b-=a; a=0; } if(b>N-1){ a-=(b-(N-1)); b=N-1; if(a<0)a=0; }
+    state.x0=a; state.x1=b; state.userZoomX=(b-a<N-1); }
+  reRender();
+});
+cv.addEventListener("dblclick",()=>{ state.userZoom=false; state.userZoomX=false; state.x0=null; state.x1=null;
+  if(state.grid){ state.viewLo=state.priceLo; state.viewHi=state.priceHi; reRender(); } });
+
+// hover -> crosshair siempre + tooltip flotante sobre zonas
+cv.addEventListener("mousemove",e=>{
+  if(dragging){ state.cross=null; hideTip(); return; }
+  const my=e.clientY-cv.getBoundingClientRect().top;
+  const L=state.layout;
+  state.cross = (L && my>=L.top && my<=L.bottom) ? my : null;   // línea que sigue el cursor
+  showTip(e.clientX, my);
+});
+cv.addEventListener("mouseleave", ()=>{ state.cross=null; hideTip(); });
+
+/* ---------- START ---------- */
+buildUI();
+resizeCanvas();
+reload();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
