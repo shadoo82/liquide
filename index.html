@@ -1,80 +1,63 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mapa de Liquidez · Top 5</title>
+<title>Mapa de Liquidez · Simple</title>
 <style>
-  :root{
-    --bg:#0a0e17; --panel:#0f1522; --panel2:#111a2b; --border:#1e2a3f;
-    --txt:#e6edf6; --muted:#7d8ca5; --accent:#37c0ff;
-    --up:#26d67c; --down:#ff5b6e; --warn:#ffb020;
-  }
+  :root{ --bg:#0a0e17; --panel:#0f1522; --panel2:#111a2b; --border:#1e2a3f;
+    --txt:#e6edf6; --muted:#7d8ca5; --accent:#37c0ff; --up:#26d67c; --down:#ff5b6e; }
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
-    font-family:"Segoe UI",system-ui,-apple-system,sans-serif;overflow:hidden;}
+    font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden;}
   #app{display:flex;flex-direction:column;height:100vh;}
-
-  header{display:flex;align-items:center;gap:14px;padding:8px 14px;
-    background:var(--panel);border-bottom:1px solid var(--border);flex-wrap:wrap;}
-  .brand{font-weight:700;font-size:15px;letter-spacing:.3px;}
-  .brand span{color:var(--accent);}
-  .group{display:flex;gap:4px;align-items:center;}
-  .lbl{font-size:11px;color:var(--muted);margin-right:4px;text-transform:uppercase;letter-spacing:.5px;}
-  .grouplbl{color:var(--accent);font-weight:700;}
-  .grouplbl.sep{margin-left:10px;padding-left:12px;border-left:1px solid var(--border);}
-
-  .dropdown{position:relative;display:inline-block;}
-  .dtrig .car{opacity:.55;margin-left:2px;}
-  .dtrig b{color:var(--accent);}
-  .ddpanel{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:30;
-    background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:5px;
-    min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,.55);}
-  .dropdown.open .ddpanel{display:block;}
-  .ddopt{display:block;width:100%;text-align:left;background:transparent;color:var(--muted);
-    border:none;padding:7px 11px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:600;}
-  .ddopt:hover{background:var(--panel2);color:var(--txt);}
-  .ddopt.on{background:var(--accent);color:#04121d;}
-  button.pill{background:var(--panel2);color:var(--muted);border:1px solid var(--border);
-    padding:5px 11px;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600;transition:.12s;}
+  header{display:flex;align-items:center;gap:5px;padding:4px 8px;flex-wrap:nowrap;overflow:hidden;
+    background:var(--panel);border-bottom:1px solid var(--border);}
+  .brand{font-weight:700;font-size:11px;line-height:1.1;flex:0 0 auto;white-space:nowrap;} .brand span{color:var(--accent);}
+  .lbl{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;}
+  select,button.pill{background:var(--panel2);color:var(--txt);border:1px solid var(--border);
+    border-radius:5px;padding:3px 6px;font-size:10.5px;cursor:pointer;font-weight:600;white-space:nowrap;}
+  #cryptoSel option,#indexSel option{background:var(--panel2);color:var(--txt);}
+  #cryptoSel,#indexSel{min-width:78px;}
+  #confSel{max-width:104px;}
+  #symInput{background:var(--panel2);color:var(--txt);border:1px solid var(--border);
+    border-radius:5px;padding:3px 6px;font-size:11px;font-weight:700;width:62px;text-transform:uppercase;}
+  #symInput:focus{outline:none;border-color:var(--accent);}
+  button.pill{color:var(--muted);}
   button.pill:hover{border-color:#33465f;color:var(--txt);}
   button.pill.on{background:var(--accent);color:#04121d;border-color:var(--accent);}
-  .chk{display:flex;gap:3px;align-items:center;}
-  .chk button{padding:4px 8px;font-size:11.5px;}
-  .chk button.on{background:#1c3a55;color:var(--accent);border-color:#2b5c85;}
-
-  .stats{margin-left:auto;display:flex;gap:16px;align-items:center;font-size:12px;}
-  .stat b{display:block;font-size:15px;font-weight:700;}
-  .stat small{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
+  .grp{display:flex;gap:3px;align-items:center;flex:0 0 auto;}
+  .stats{margin-left:auto;display:flex;gap:9px;align-items:center;font-size:10px;flex:0 0 auto;}
+  .stat b{display:block;font-size:13px;line-height:1.1;} .stat small{color:var(--muted);font-size:8px;text-transform:uppercase;}
   #price b{color:var(--accent);}
-  #refreshBtn{font-size:16px;padding:4px 10px;line-height:1;}
-  #refreshBtn.spin{animation:sp .7s linear;}
-  #refreshBtn:disabled{opacity:.5;cursor:wait;}
-  @keyframes sp{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-  #status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--warn);}
+  #status{display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--muted);white-space:nowrap;}
+  .dot{width:8px;height:8px;border-radius:50%;background:#ffb020;}
   .dot.ok{background:var(--up);} .dot.err{background:var(--down);}
-
-  main{flex:1;position:relative;}  canvas{display:block;width:100%;height:100%;}
-  #lsbar{display:flex;align-items:center;justify-content:center;gap:14px;padding:5px 14px;background:var(--panel);
-    border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap;}
+  main{flex:1;position:relative;} canvas{display:block;width:100%;height:100%;touch-action:none;}
+  #lsbar{display:flex;align-items:center;justify-content:center;gap:14px;padding:5px 14px;
+    background:var(--panel);border-bottom:1px solid var(--border);font-size:12px;flex-wrap:wrap;}
   #lsbar .lslabel{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
-  #lsbar select{background:var(--panel2);color:var(--txt);border:1px solid var(--border);
-    border-radius:6px;padding:3px 6px;font-size:11px;cursor:pointer;}
-  #lsbar .lsbarwrap{flex:0 0 280px;height:17px;border-radius:9px;overflow:hidden;display:flex;
+  #lsbar .lsflow{font-size:10.5px;font-weight:600;color:var(--muted);}
+  #lsbar .lswrap{flex:0 0 300px;height:17px;border-radius:9px;overflow:hidden;display:flex;
     background:#141d2c;border:1px solid var(--border);}
   #lsbar .lslong{flex-basis:0;flex-grow:1;background:linear-gradient(90deg,#0c4d31,#26d67c);
-    display:flex;align-items:center;justify-content:flex-end;padding-right:7px;color:#eafff5;font-weight:700;font-size:10.5px;overflow:hidden;}
+    display:flex;align-items:center;justify-content:flex-end;padding-right:7px;
+    color:#eafff5;font-weight:700;font-size:10.5px;overflow:hidden;}
   #lsbar .lsshort{flex-basis:0;flex-grow:1;background:linear-gradient(90deg,#ff5b6e,#5c1f28);
     display:flex;align-items:center;padding-left:7px;color:#ffeaed;font-weight:700;font-size:10.5px;overflow:hidden;}
   #lsbar .lsv{color:var(--muted);font-size:11px;}
-  #lsbar .lsval{font-weight:700;} #lsbar .lsval.long{color:var(--up);} #lsbar .lsval.short{color:var(--down);}
-  #lsbar #lsSkew{font-weight:700;}
-  .disclaimer{position:absolute;left:10px;bottom:6px;font-size:10.5px;color:#516073;
-    background:rgba(10,14,23,.6);padding:2px 7px;border-radius:5px;pointer-events:none;}
-
-  #targets{position:absolute;top:44px;right:8px;width:218px;
+  #lsbar .lsv b{font-weight:700;} #lsbar .up{color:var(--up);} #lsbar .dn{color:var(--down);}
+  #lsSkew{font-weight:700;}
+  #legend{position:absolute;left:12px;top:10px;background:rgba(6,10,18,.75);
+    padding:7px 10px;border-radius:7px;font-size:10.5px;color:#c7d3e3;pointer-events:none;}
+  #legend .bar{width:130px;height:8px;border-radius:2px;margin:4px 0 3px;
+    background:linear-gradient(90deg,#101828,#1a5a68,#2ab5a5,#8fd46e,#ffe15a);}
+  #legend .ends{display:flex;justify-content:space-between;color:var(--muted);font-size:9.5px;}
+  #colorctl{position:absolute;top:78px;left:12px;display:flex;align-items:center;gap:7px;
+    background:rgba(6,10,18,.72);padding:4px 9px;border-radius:6px;font-size:9.5px;
+    color:#8393ab;z-index:5;text-transform:uppercase;letter-spacing:.4px;}
+  #colorctl input{width:120px;accent-color:#37c0ff;cursor:pointer;}
+  #targets{position:absolute;top:10px;right:8px;width:218px;z-index:5;
     background:rgba(8,12,20,.92);border:1px solid #263650;border-radius:8px;
     padding:6px 8px;font-size:11px;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.5);}
   #targets .tt{font-size:9px;color:#7d8ca5;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
@@ -85,1244 +68,1351 @@
   #targets .rk{width:15px;height:15px;border-radius:50%;background:#1e2a3f;color:#c7d3e3;
     font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
   #targets .row.main .rk{background:#ff9c2e;color:#1a0f00;}
-  #targets .tdot{width:7px;height:7px;border-radius:2px;flex:0 0 auto;}
   #targets .ar{font-size:10px;width:10px;flex:0 0 auto;}
   #targets .ar.up,#targets .ds.up{color:#26d67c;} #targets .ar.dn,#targets .ds.dn{color:#ff5b6e;}
   #targets .pr{font-weight:700;color:#e6edf6;min-width:52px;}
   #targets .am{color:#ffd75c;font-weight:600;min-width:46px;}
   #targets .ds{margin-left:auto;font-size:10px;font-weight:600;}
-  #targets .sw{width:13px;text-align:center;font-size:10px;font-weight:700;flex:0 0 auto;}
-  #targets .sw.hit{color:#26d67c;}
-  #targets .sw.pend{color:#ffb020;}
-  #targets .swstat{margin-top:5px;padding-top:5px;border-top:1px solid #1e2a3f;
-    font-size:10px;color:#8393ab;text-align:center;}
-
   #tip{position:absolute;pointer-events:none;display:none;z-index:6;
-    background:rgba(9,14,22,.97);border:1px solid #2a3a54;border-radius:10px;
-    padding:9px 12px;font-size:11.5px;color:#e6edf6;white-space:nowrap;min-width:170px;
-    box-shadow:0 6px 22px rgba(0,0,0,.7);}
-  #tip .tp{font-weight:700;font-size:14px;color:#e6edf6;margin-bottom:7px;
-    border-bottom:1px solid #223349;padding-bottom:5px;}
-  #tip .tr{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:2px 0;}
-  #tip .tr b{font-weight:700;}
-  #tip .tr small{color:#8393ab;}
+    background:rgba(9,14,22,.97);border:1px solid #2a3a54;border-radius:9px;
+    padding:9px 12px;font-size:11.5px;white-space:nowrap;box-shadow:0 6px 22px rgba(0,0,0,.7);min-width:150px;}
+  #tip .tp{font-weight:700;font-size:13px;margin-bottom:6px;color:#ffd75c;
+    border-bottom:1px solid #223349;padding-bottom:4px;}
+  #tip .tr{display:flex;justify-content:space-between;gap:16px;padding:2px 0;}
+  #tip .tr small{color:#8393ab;} #tip .tr b{font-weight:700;}
+  .note{position:absolute;left:12px;bottom:6px;font-size:10px;color:#4d5b70;pointer-events:none;}
 
-  #colorctl{position:absolute;top:44px;left:12px;display:flex;align-items:center;gap:7px;
-    background:rgba(6,10,18,.72);padding:4px 9px;border-radius:6px;font-size:9.5px;
-    color:#8393ab;z-index:5;text-transform:uppercase;letter-spacing:.4px;}
-  #colorctl input{width:120px;accent-color:#37c0ff;cursor:pointer;}
-  #tierleg{position:absolute;top:78px;left:12px;display:flex;flex-direction:column;gap:3px;
-    background:rgba(6,10,18,.6);padding:6px 9px;border-radius:6px;font-size:10px;color:#c7d3e3;z-index:5;}
-  #tierleg>div{display:flex;align-items:center;gap:6px;}
-  #tierleg span{width:9px;height:9px;border-radius:2px;flex:0 0 auto;}
+  /* ---- TABLET: la cabecera se reorganiza en dos líneas ---- */
+  @media (max-width:1100px){
+    header{flex-wrap:wrap;gap:4px;padding:4px 6px;}
+    .stats{margin-left:auto;}
+    #targets{width:180px;font-size:10px;top:6px;right:4px;}
+    #targets .pr{min-width:44px;} #targets .am{min-width:38px;}
+    #colorctl{top:70px;}
+    .note{display:none;}
+  }
+  /* ---- MÓVIL: controles compactos, paneles reducidos ---- */
+  @media (max-width:700px){
+    header{gap:3px;padding:3px 4px;}
+    .brand{display:none;}
+    .lbl{display:none;}
+    select,button.pill{padding:4px 6px;font-size:11px;}
+    #symInput{width:56px;font-size:11px;}
+    #indexSel{min-width:60px;} #confSel{max-width:78px;}
+    .stats{gap:6px;} .stat b{font-size:12px;}
+    #status span:last-child{display:none;}
+    #lsbar{padding:3px 6px;gap:7px;font-size:10px;}
+    #lsbar .lswrap{flex:1 1 120px;height:14px;}
+    #lsbar .lslabel,#lsbar .lsflow{display:none;}
+    #legend{left:6px;top:6px;padding:5px 7px;font-size:9px;}
+    #legend .bar{width:90px;}
+    #colorctl{top:62px;left:6px;padding:3px 6px;}
+    #colorctl input{width:80px;}
+    #colorctl span{display:none;}
+    #targets{width:150px;font-size:9.5px;padding:4px 5px;top:4px;right:3px;}
+    #targets .tt{display:none;}
+    #targets .pr{min-width:38px;} #targets .am{min-width:32px;}
+    #targets .row:nth-child(n+7){display:none;}   /* solo 5 objetivos en móvil */
+    #tip{font-size:10.5px;padding:7px 9px;min-width:120px;}
+  }
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <div class="brand">Mapa de <span>Liquidez</span></div>
-
-    <div class="group" id="symbols"></div>
-
-    <div class="group" id="tfs"></div>
-
-    <div class="group" id="levs"></div>
-
-    <div class="group" id="opts"></div>
-
+    <div class="brand">Mapa<span>Liq</span></div>
+    <div class="grp"><input id="symInput" list="symList" placeholder="BTC" autocomplete="off" title="Escribe el par y pulsa Enter"><datalist id="symList"></datalist></div>
+    <div class="grp"><select id="indexSel" title="Índices"></select></div>
+    <div class="grp"><span class="lbl">TF</span><select id="tfSel"></select></div>
+    <div class="grp" id="levs"><span class="lbl">Apal</span></div>
+    <button class="pill on" id="candleBtn" title="Velas">🕯</button>
+    <button class="pill" id="cleanBtn" title="Modo limpio: oculta zonas y deja solo velas + muros">🧹</button>
+    <button class="pill on" id="heatmapBtn" title="Oculta el mapa de calor de liquidez estimada (fondo)">🌡</button>
+    <button class="pill on" id="macroBtn" title="Zonas de temporalidad mayor (4h/1d)">🟣</button>
+    <button class="pill on" id="oiBtn" title="Pondera por Open Interest real">📈</button>
+    <button class="pill on" id="bookBtn" title="Muros REALES del libro de órdenes (ballenas)">🐋</button>
+    <div class="grp"><span class="lbl">Muro ≥</span>
+      <select id="bookUsdSel" title="Tamaño mínimo del muro en USD">
+        <option value="100000">$100K</option>
+        <option value="250000">$250K</option>
+        <option value="500000">$500K</option>
+        <option value="1000000">$1M</option>
+        <option value="2000000">$2M</option>
+        <option value="5000000">$5M</option>
+        <option value="10000000">$10M</option>
+        <option value="15000000">$15M</option>
+        <option value="20000000">$20M</option>
+        <option value="25000000">$25M</option>
+        <option value="50000000">$50M</option>
+        <option value="100000000">$100M</option>
+        <option value="200000000">$200M</option>
+      </select>
+    </div>
+    <button class="pill on" id="reactBtn" title="Zonas donde el precio ya rechazó antes (liquidez probada)">⟲</button>
+    <button class="pill on" id="heatBtn" title="Zonas de calor: liquidez institucional agrupada (SHORT arriba / LONG abajo)">🔥</button>
+    <div class="grp"><span class="lbl">Confl</span>
+      <select id="confSel" title="Cuántas señales deben coincidir">
+        <option value="3">Las 3</option>
+        <option value="2">2 de 3</option>
+        <option value="poc">+POC</option>
+        <option value="macro">+4h</option>
+        <option value="off">Off</option>
+      </select>
+    </div>
+    <button class="pill on" id="vpBtn" title="Perfil de volumen real (VRVP)">📊</button>
+    <div class="grp"><span class="lbl">Filas</span>
+      <button class="pill" id="rowMinus" style="padding:3px 6px;">−</button>
+      <span id="rowVal" style="font-size:10px;color:var(--accent);font-weight:700;min-width:28px;text-align:center;">2000</span>
+      <button class="pill" id="rowPlus" style="padding:3px 6px;">+</button>
+    </div>
+    <button class="pill" id="refreshBtn" title="Recargar">⟳</button>
     <div class="stats">
-      <button class="pill" id="refreshBtn" title="Recargar datos">⟳</button>
       <div class="stat" id="price"><small id="psym">BTC</small><b>—</b></div>
-      <div class="stat"><small>Vol. 24h</small><b id="vol24">—</b></div>
-      <div class="stat"><small>24h %</small><b id="chg24">—</b></div>
       <div id="status"><span class="dot" id="sdot"></span><span id="stxt">iniciando…</span></div>
     </div>
   </header>
-
   <div id="lsbar">
     <span class="lslabel" id="lsLabel">Largo / Corto · vol. taker</span>
-    <span class="lsv" id="lsFlow" style="color:#7d8ca5;"></span>
-    <div class="lsbarwrap">
-      <div class="lslong" id="lsLongBar">—</div>
-      <div class="lsshort" id="lsShortBar">—</div>
+    <span class="lsflow" id="lsFlow"></span>
+    <div class="lswrap">
+      <div class="lslong" id="lsLong">—</div>
+      <div class="lsshort" id="lsShort">—</div>
     </div>
-    <span class="lsv">Largo <b class="lsval long" id="lsLongVal">—</b></span>
-    <span class="lsv">Corto <b class="lsval short" id="lsShortVal">—</b></span>
+    <span class="lsv">Largo <b class="up" id="lsLongVal">—</b></span>
+    <span class="lsv">Corto <b class="dn" id="lsShortVal">—</b></span>
     <span class="lsv" id="lsSkew"></span>
   </div>
-
   <main>
     <canvas id="cv"></canvas>
+    <div id="legend">
+      <div>Liquidez por precio</div>
+      <div class="bar"></div>
+      <div class="ends"><span>poca</span><span>mucha (imán)</span></div>
+    </div>
     <div id="colorctl">
       <span>resaltar</span>
       <input id="gammaSlider" type="range" min="1" max="3" step="0.1">
       <span>desvanecer</span>
     </div>
-    <div id="tierleg">
-      <div><span style="background:#ff5b6e"></span>Clave</div>
-      <div><span style="background:#ff9c2e"></span>Alta</div>
-      <div><span style="background:#ffe15a"></span>Media</div>
-      <div><span style="background:#3fd68a"></span>Baja</div>
-    </div>
     <div id="targets"></div>
     <div id="tip"></div>
-    <div class="disclaimer">Estimación (Binance + modelo de apalancamiento). Burbujas = liquidaciones REALES en vivo · rueda: zoom vertical · Shift+rueda: zoom horizontal · arrastrar: mover · doble-click: reset.</div>
+    <div class="note">Heatmap = liquidez estimada · Panel derecho VRVP = volumen REAL negociado (POC en ámbar) · Binance Futures</div>
   </main>
 </div>
-
 <script>
-/* ============================================================
-   CONFIG  ·  puedes tocar aquí sin miedo
-   ============================================================ */
-const CONFIG = {
-  groups: [
-    { label:"Cripto",  symbols:["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","DOTUSDT"] },
-    { label:"Índices", symbols:["XAUUSDT","XAGUSDT","CLUSDT","BZUSDT","NATGASUSDT"] },
-  ],
-  tfs: ["5m","15m","1h","4h","1d"],
-  // cuántas velas cargamos por temporalidad (ventana de análisis)
-  limitByTf: { "5m":288, "15m":192, "1h":240, "4h":180, "1d":200 },
-  leverages: [10,25,50,100],          // apalancamientos que puedes activar/desactivar
-  defaultLevs: [10,25,50,100],
-  rows: 300,                          // resolución vertical del heatmap (nº de precios)
-  gamma: 1.5,                         // CONTRASTE: sube (2, 2.5) = más oscuro/limpio · baja (1.2) = más color
-  tipMinT: 0.82,                      // color mínimo para el tooltip: 0.82 = solo amarillo fuerte (sube a 0.9 = más estricto, baja a 0.7 = incluye verde)
-  normPct: 0.96,                      // referencia de brillo máximo (percentil). Sube para apagar ruido
-  bubbleLife: 26000,                  // ms que dura visible una liquidación real
-  restKlines: "https://fapi.binance.com/fapi/v1/klines",
-  oiHist: "https://fapi.binance.com/futures/data/openInterestHist",
-  ticker24: "https://fapi.binance.com/fapi/v1/ticker/24hr",
-  wsBase: "wss://fstream.binance.com/stream?streams=",
+function SAVED_G(){ try{ return (JSON.parse(localStorage.getItem("mapaSimple")||"{}")).gamma; }catch(e){ return null; } }
+const CONFIG={
+  groups:{
+    "Cripto":["BTCUSDT","ETHUSDT","SOLUSDT","BNBUSDT","XRPUSDT","DOGEUSDT","ADAUSDT","AVAXUSDT",
+              "LINKUSDT","DOTUSDT","LTCUSDT","BCHUSDT","NEARUSDT","MATICUSDT","UNIUSDT","ICPUSDT",
+              "APTUSDT","ATOMUSDT","XLMUSDT","ETCUSDT","FILUSDT","HBARUSDT","ARBUSDT","OPUSDT",
+              "SUIUSDT","INJUSDT","TONUSDT","TIAUSDT","RENDERUSDT","IMXUSDT","STXUSDT","GRTUSDT",
+              "AAVEUSDT","MKRUSDT","ALGOUSDT","QNTUSDT","SANDUSDT","AXSUSDT","EGLDUSDT","FTMUSDT",
+              "THETAUSDT","FLOWUSDT","XTZUSDT","CHZUSDT","LDOUSDT","CRVUSDT","SNXUSDT","COMPUSDT",
+              "ENAUSDT","SEIUSDT","PENDLEUSDT","JUPUSDT","WLDUSDT","ONDOUSDT","ENSUSDT","DYDXUSDT",
+              "GALAUSDT","MANAUSDT","ZECUSDT","1INCHUSDT","KSMUSDT","BATUSDT","ZRXUSDT","ENJUSDT",
+              "YFIUSDT","SUSHIUSDT","DASHUSDT","WAVESUSDT","IOTAUSDT","NEOUSDT","CELOUSDT","ROSEUSDT",
+              "KAVAUSDT","ZILUSDT","GMXUSDT","APEUSDT","LRCUSDT","BALUSDT","STORJUSDT","CVXUSDT",
+              "FXSUSDT","RUNEUSDT","WOOUSDT","FLOKIUSDT","JASMYUSDT","OCEANUSDT","API3USDT","BLURUSDT",
+              "MASKUSDT","ANKRUSDT","CTSIUSDT","SKLUSDT","BANDUSDT","ARUSDT","MINAUSDT","GMTUSDT",
+              "SSVUSDT","METISUSDT","ASTRUSDT","SFPUSDT"],
+    "Índices":["XAUUSDT","XAGUSDT","CLUSDT","BZUSDT","NATGASUSDT"],
+  },
+  tfs:["5m","15m","1h","4h","1d"],
+  limitByTf:{"5m":288,"15m":288,"1h":240,"4h":180,"1d":180},
+  levs:[10,25,50,100],
+  rows:220, gamma:(SAVED_G()||1.5), topN:8, openFrac:0.02,
+  rest:"https://fapi.binance.com/fapi/v1/klines",
+  oiHist:"https://fapi.binance.com/futures/data/openInterestHist",
+  depth:"https://fapi.binance.com/fapi/v1/depth",   // libro de órdenes REAL (muros)
+  ws:"wss://fstream.binance.com/stream?streams=",
+  // ventana exacta del ratio L/S por TF: [intervalo, nº velas]
+  lsPoll:{ "5m":["1m",5], "15m":["1m",15], "1h":["1m",60], "4h":["5m",48], "1d":["15m",96] },
+  // temporalidad mayor (macro) a superponer según el TF actual
+  htfFor:{ "5m":"4h", "15m":"4h", "1h":"4h", "4h":"1d", "1d":null },
+  // duración de cada vela en ms (para la cuenta atrás)
+  tfMs:{ "5m":300000, "15m":900000, "1h":3600000, "4h":14400000, "1d":86400000 },
 };
+const SAVED=(()=>{ try{return JSON.parse(localStorage.getItem("mapaSimple")||"{}");}catch(e){return {};} })();
+const state={ symbol:SAVED.symbol||"BTCUSDT", tf:SAVED.tf||"15m", levs:[25,50,100], showCandles:true,
+  candles:[], grid:null, gridMax:1, profile:null, zones:[],
+  lo:0, hi:1, bucket:1, livePrice:null, ws:null, hover:null, layout:null, need:false,
+  viewLo:null, viewHi:null, x0:null, x1:null, userZoom:false,
+  lsBuy:0, lsSell:0, lsAt:0, lsLive:false, lastWsMsg:0,
+  showHTF:true, htfZones:[], htfTf:null, useOI:true, confMode:(SAVED.confMode||"3"),
+  bookWalls:[], showBook:true, bookTracked:[], bookErr:null, bookMinUsd:(SAVED.bookMinUsd||1000000),
+  depthWs:null, depthBook:{bids:new Map(), asks:new Map()},   // libro completo acumulado por WS   // muro ≥ X USD
+  reactZones:[], showReact:true,  // zonas donde el precio YA reaccionó (liquidez probada)
+  heatZones:[], showHeat:true, showZones:true, cleanMode:false, showHeatmap:true,    // ZONAS DE CALOR + modo limpio + heatmap de fondo
+  vp:null, vpMax:1, vpPoc:0, vpRows:2000, showVP:true };   // VRVP superpuesto
+const $=s=>document.querySelector(s);
+const cv=$("#cv"), ctx=cv.getContext("2d");
+const buf=[document.createElement("canvas"),document.createElement("canvas")];
+const bx=[buf[0].getContext("2d"),buf[1].getContext("2d")];
+let cur=0, staticCv=null;
+const SYMNM={PAXGUSDT:"Oro (PAXG)",WBTCUSDT:"WBTC"};
+const nm=s=>SYMNM[s]||s.replace("USDT","");
+const fmt=n=>n>=1000?n.toLocaleString("en-US",{maximumFractionDigits:0}):n.toFixed(n<10?4:2);
+const usd=n=>"$"+(n>=1e9?(n/1e9).toFixed(2)+"B":n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(0)+"K":n.toFixed(0));
 
-/* ============================================================ */
-const state = {
-  symbol: "BTCUSDT", tf: "5m", limit: 288,
-  leverages: [...CONFIG.defaultLevs],
-  candles: [], livePrice: null,
-  grid: null, gridMax: 1, priceLo: 0, priceHi: 1, bucket: 1,
-  profile: null, topZones: [],
-  liqs: [], liqTot5m: 0,
-  viewLo: null, viewHi: null, userZoom: false, showCandles: true,
-  x0: null, x1: null, userZoomX: false,
-  weightMode: "vol", oiMap: null,   // "vol" | "oi" | "oidelta"
-  showHTF: false, htfZones: [], htfTf: null,
-  showVP: false, vp: null, vpPoc: 0, vpMax: 1, vpWidth: 0.20, vpThick: 1, vpRows: 2000,   // perfil de volumen (VRVP)
-  track: [], hits: 0, misses: 0, showTrack: false,   // seguimiento de zonas barridas
-  lsBuy: 0, lsSell: 0, lsLive: false,   // ratio largo/corto por REST (velas 1m)
-  ws: null, switching: false, needCompute: false, reconnectT: null,
-  tws: null, treconnectT: null,
-  layout: null, staticCanvas: null,
-};
-
-const $ = s => document.querySelector(s);
-const cv = $("#cv"), ctx = cv.getContext("2d");
-const buffers=[document.createElement("canvas"),document.createElement("canvas")]; // doble buffer (evita negro)
-const bctx=[buffers[0].getContext("2d"),buffers[1].getContext("2d")];
-let curBuf=0;
-const SYMNAMES = { BTCUSDT:"BTC", ETHUSDT:"ETH", SOLUSDT:"SOL", XRPUSDT:"XRP", DOTUSDT:"DOT",
-  XAUUSDT:"Oro", XAGUSDT:"Plata", CLUSDT:"Petróleo", BZUSDT:"Brent", NATGASUSDT:"Gas", PAXGUSDT:"PAXG" };
-const symName = s => SYMNAMES[s] || s.replace("USDT","");
-const HTF_FOR = { "5m":"4h", "15m":"4h", "1h":"4h", "4h":"1d", "1d":null };  // temporalidad mayor a superponer
-// ventana EXACTA del ratio L/S por TF (interval, nº de velas) = mismo periodo que la TF
-const LS_POLL = { "5m":["1m",5], "15m":["1m",15], "1h":["1m",60], "4h":["5m",48], "1d":["15m",96] };
-const fmt = n => n>=1000 ? n.toLocaleString("en-US",{maximumFractionDigits:0})
-                          : n.toLocaleString("en-US",{maximumFractionDigits: n<10?4:2});
-const usdFmt = n => "$"+(n>=1e9?(n/1e9).toFixed(2)+"B":n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(0)+"K":n.toFixed(0));
-const coinFmt = n => n>=1e6?(n/1e6).toFixed(2)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":n>=1?n.toFixed(1):n.toFixed(3);
-// niveles de prioridad por fuerza relativa a la zona más fuerte
-const TIERS=[[0.85,"Clave","#ff5b6e"],[0.65,"Alta","#ff9c2e"],[0.45,"Media","#ffe15a"],[0,"Baja","#3fd68a"]];
-function tierOf(v){ const ref=(state.topZones&&state.topZones[0])?state.topZones[0].v:0; const r=ref>0?v/ref:0;
-  for(const t of TIERS){ if(r>=t[0]) return {name:t[1],color:t[2]}; } return {name:"Baja",color:"#3fd68a"}; }
-
-/* ---------- UI ---------- */
-function closeAllDropdowns(){ document.querySelectorAll("header .dropdown.open").forEach(d=>d.classList.remove("open")); }
+/* ---- UI ---- */
 function buildUI(){
-  const sc = $("#symbols");
-  sc.innerHTML="";
-  CONFIG.groups.forEach((g)=>{
-    const dd=document.createElement("div"); dd.className="dropdown";
-    const trig=document.createElement("button"); trig.className="pill dtrig";
-    const has=g.symbols.includes(state.symbol);
-    trig.innerHTML=g.label+(has?' · <b>'+symName(state.symbol)+'</b>':'')+' <span class="car">▾</span>';
-    const panel=document.createElement("div"); panel.className="ddpanel";
-    g.symbols.forEach(s=>{
-      const b=document.createElement("button"); b.className="ddopt"+(s===state.symbol?" on":"");
-      b.textContent=symName(s); b.dataset.sym=s;
-      b.onclick=(e)=>{ e.stopPropagation(); selectSymbol(s); closeAllDropdowns(); };
-      panel.appendChild(b);
-    });
-    trig.onclick=(e)=>{ e.stopPropagation(); const open=dd.classList.contains("open");
-      closeAllDropdowns(); if(!open) dd.classList.add("open"); };
-    dd.appendChild(trig); dd.appendChild(panel); sc.appendChild(dd);
-  });
-  // TF como desplegable
-  const tc=$("#tfs"); tc.innerHTML="";
-  const tdd=document.createElement("div"); tdd.className="dropdown";
-  const ttrig=document.createElement("button"); ttrig.className="pill dtrig";
-  ttrig.innerHTML='TF · <b>'+state.tf+'</b> <span class="car">▾</span>';
-  const tpan=document.createElement("div"); tpan.className="ddpanel";
-  CONFIG.tfs.forEach(t=>{
-    const b=document.createElement("button"); b.className="ddopt"+(t===state.tf?" on":"");
-    b.textContent=t; b.dataset.tf=t;
-    b.onclick=e=>{ e.stopPropagation();
-      tpan.querySelectorAll(".ddopt").forEach(x=>x.classList.remove("on")); b.classList.add("on");
-      state.tf=t; ttrig.innerHTML='TF · <b>'+t+'</b> <span class="car">▾</span>';
-      closeAllDropdowns(); reload(); };
-    tpan.appendChild(b);
-  });
-  ttrig.onclick=e=>{ e.stopPropagation(); const o=tdd.classList.contains("open");
-    closeAllDropdowns(); if(!o) tdd.classList.add("open"); };
-  tdd.append(ttrig,tpan); tc.appendChild(tdd);
-
-  // Apalancamientos como desplegable (multi-selección)
-  const lc=$("#levs"); lc.innerHTML=""; lc.classList.remove("chk");
-  const ldd=document.createElement("div"); ldd.className="dropdown";
-  const ltrig=document.createElement("button"); ltrig.className="pill dtrig";
-  const levTxt=()=>'Apalanc. · <b>'+state.leverages.slice().sort((a,b)=>a-b).map(x=>x+"x").join(" ")+'</b> <span class="car">▾</span>';
-  ltrig.innerHTML=levTxt();
-  const lpan=document.createElement("div"); lpan.className="ddpanel";
-  lpan.onclick=e=>e.stopPropagation();   // multi-selección: no cierra al elegir
-  CONFIG.leverages.forEach(L=>{
-    const b=document.createElement("button"); b.className="ddopt"+(state.leverages.includes(L)?" on":"");
+  const inp=$("#symInput"), dl=$("#symList"), ix=$("#indexSel");
+  // llena el datalist con todos los pares cripto (para autocompletar al escribir)
+  (CONFIG.groups["Cripto"]||[]).forEach(s=>{const o=document.createElement("option");o.value=nm(s);dl.appendChild(o);});
+  // selector de índices aparte
+  const phI=document.createElement("option"); phI.value=""; phI.textContent="Índices…"; phI.disabled=true;
+  ix.appendChild(phI);
+  (CONFIG.groups["Índices"]||[]).forEach(s=>{const o=document.createElement("option");o.value=s;o.textContent=nm(s);ix.appendChild(o);});
+  // estado inicial
+  const esIndice=(CONFIG.groups["Índices"]||[]).includes(state.symbol);
+  if(esIndice){ ix.value=state.symbol; inp.value=""; } else { inp.value=nm(state.symbol); ix.value=""; }
+  $("#psym").textContent=nm(state.symbol);
+  // al escribir un par y pulsar Enter (o elegir del autocompletar): normaliza a XXXUSDT
+  const aplicarSym=()=>{
+    let v=inp.value.trim().toUpperCase().replace(/\s/g,"");
+    if(!v) return;
+    if(!v.endsWith("USDT")) v=v+"USDT";
+    state.symbol=v; ix.value=""; $("#psym").textContent=nm(v);
+    inp.value=nm(v); savePrefs(); reload();
+  };
+  inp.onchange=aplicarSym;
+  inp.onkeydown=e=>{ if(e.key==="Enter") aplicarSym(); };
+  // al hacer clic: borra el par actual para escribir otro directamente (y muestra la lista)
+  inp.onfocus=()=>{ inp.dataset.prev=inp.value; inp.value=""; };
+  // si sale sin escribir nada, recupera el par que había
+  inp.onblur=()=>{ if(!inp.value.trim() && inp.dataset.prev) inp.value=inp.dataset.prev; };
+  ix.onchange=()=>{ state.symbol=ix.value; inp.value=""; $("#psym").textContent=nm(ix.value); savePrefs(); reload(); };
+  const ts=$("#tfSel");
+  CONFIG.tfs.forEach(t=>{const o=document.createElement("option");o.value=t;o.textContent=t;ts.appendChild(o);});
+  ts.value=state.tf; ts.onchange=()=>{state.tf=ts.value;savePrefs();reloadTf();};
+  const lc=$("#levs");
+  CONFIG.levs.forEach(L=>{
+    const b=document.createElement("button"); b.className="pill"+(state.levs.includes(L)?" on":"");
     b.textContent=L+"x";
-    b.onclick=e=>{ e.stopPropagation();
-      if(state.leverages.includes(L)){ if(state.leverages.length>1) state.leverages=state.leverages.filter(x=>x!==L); }
-      else state.leverages.push(L);
-      b.classList.toggle("on", state.leverages.includes(L));
-      ltrig.innerHTML=levTxt();
-      computeHeatmap(); buildStatic(); updateTargets(); };
-    lpan.appendChild(b);
+    b.onclick=()=>{ if(state.levs.includes(L)){ if(state.levs.length>1) state.levs=state.levs.filter(x=>x!==L); }
+      else state.levs.push(L);
+      b.classList.toggle("on",state.levs.includes(L)); compute(); render(); };
+    lc.appendChild(b);
   });
-  ltrig.onclick=e=>{ e.stopPropagation(); const o=ldd.classList.contains("open");
-    closeAllDropdowns(); if(!o) ldd.classList.add("open"); };
-  ldd.append(ltrig,lpan); lc.appendChild(ldd);
-  const oc=$("#opts");
-  const vb=document.createElement("button"); vb.className="pill"+(state.showCandles?" on":"");
-  vb.textContent="🕯 Velas"; vb.onclick=()=>{ state.showCandles=!state.showCandles;
-    vb.classList.toggle("on",state.showCandles); buildStatic(); };
-  oc.appendChild(vb);
-  // toggle: zonas de temporalidad mayor (macro)
-  const hb=document.createElement("button"); hb.className="pill"+(state.showHTF?" on":"");
-  hb.textContent="Macro"; hb.title="Superponer zonas fuertes de la temporalidad mayor (4h/1d)";
-  hb.onclick=async()=>{
-    state.showHTF=!state.showHTF; hb.classList.toggle("on",state.showHTF);
-    await fetchHTF(); buildStatic();
+  $("#candleBtn").onclick=e=>{ state.showCandles=!state.showCandles;
+    e.target.classList.toggle("on",state.showCandles); render(); };
+  $("#cleanBtn").onclick=e=>{
+    state.cleanMode=!state.cleanMode;
+    e.target.classList.toggle("on",state.cleanMode);
+    // en modo limpio oculta zonas, calor, reacción, macro; deja velas, muros, POC
+    const off=state.cleanMode;
+    state.showHeat=!off; state.showReact=!off; state.showHTF=!off; state.showZones=!off;
+    // sincroniza los botones visualmente
+    ["heatBtn","reactBtn","macroBtn"].forEach(id=>{ const b=$("#"+id); if(b) b.classList.toggle("on",!off); });
+    render();
   };
-  oc.appendChild(hb);
-  // toggle: perfil de volumen real + deslizante de ancho
-  const pb=document.createElement("button"); pb.className="pill"+(state.showVP?" on":"");
-  pb.textContent="Vol.Perfil"; pb.title="Perfil de volumen real negociado por precio (POC)";
-  pb.onclick=()=>{ state.showVP=!state.showVP; pb.classList.toggle("on",state.showVP);
-    vpSl.style.display=state.showVP?"inline-block":"none"; if(state.grid) buildStatic(); };
-  oc.appendChild(pb);
-  const vpSl=document.createElement("input"); vpSl.type="range"; vpSl.min="0.12"; vpSl.max="1"; vpSl.step="0.02";
-  vpSl.value=state.vpThick; vpSl.title="Grosor de las barras (izq = más finas)";
-  vpSl.style.cssText="width:60px;vertical-align:middle;accent-color:#ff9fe0;cursor:pointer;margin-left:4px;display:"+(state.showVP?"inline-block":"none")+";";
-  vpSl.oninput=()=>{ state.vpThick=+vpSl.value; vpSl.title="Grosor: "+vpSl.value; if(state.grid) buildStatic(); };
-  oc.appendChild(vpSl);
-  const vpWl=document.createElement("input"); vpWl.type="range"; vpWl.min="0.04"; vpWl.max="0.35"; vpWl.step="0.01";
-  vpWl.value=state.vpWidth; vpWl.title="Largo/ancho del perfil";
-  vpWl.style.cssText="width:60px;vertical-align:middle;accent-color:#9fd0ff;cursor:pointer;margin-left:3px;display:"+(state.showVP?"inline-block":"none")+";";
-  vpWl.oninput=()=>{ state.vpWidth=+vpWl.value; if(state.grid) buildStatic(); };
-  oc.appendChild(vpWl);
-  // control de FILAS del perfil (como el VRVP del orderbook)
-  const vpRowsWrap=document.createElement("span");
-  vpRowsWrap.style.cssText="display:"+(state.showVP?"inline-flex":"none")+";align-items:center;gap:3px;margin-left:6px;";
-  const rlab=document.createElement("span"); rlab.className="lbl"; rlab.textContent="Filas"; rlab.style.marginRight="2px";
-  const rval=document.createElement("span"); rval.textContent=state.vpRows; rval.style.cssText="font-size:11px;color:var(--accent);font-weight:700;min-width:28px;text-align:center;";
-  const rminus=document.createElement("button"); rminus.className="pill"; rminus.textContent="−"; rminus.style.padding="2px 7px";
-  const rplus=document.createElement("button"); rplus.className="pill"; rplus.textContent="+"; rplus.style.padding="2px 7px";
-  const setRows=v=>{ state.vpRows=Math.max(30,Math.min(2000,v)); rval.textContent=state.vpRows;
-    buildStatic(); };
-  rminus.onclick=()=>setRows(state.vpRows-50); rplus.onclick=()=>setRows(state.vpRows+50);
-  vpRowsWrap.append(rlab,rminus,rval,rplus); oc.appendChild(vpRowsWrap);
-  // seguimiento de zonas barridas (estadística)
-  const tb=document.createElement("button"); tb.className="pill"+(state.showTrack?" on":"");
-  tb.textContent="🎯 Barridas"; tb.title="Mide cuántas zonas #1-#3 acaba tocando el precio";
-  tb.style.marginLeft="8px";
-  tb.onclick=()=>{ state.showTrack=!state.showTrack; tb.classList.toggle("on",state.showTrack);
-    if(!state.showTrack){ state.track=[]; state.hits=0; state.misses=0; }
-    else trackZones();
-    updateTargets(); };
-  oc.appendChild(tb);
-  pb.onclick=()=>{ state.showVP=!state.showVP; pb.classList.toggle("on",state.showVP);
-    const d=state.showVP?"inline-block":"none"; vpSl.style.display=d; vpWl.style.display=d;
-    vpRowsWrap.style.display=state.showVP?"inline-flex":"none";
-    if(state.grid) buildStatic(); };
-  // selector de PESO: Volumen / OI total / OI Δ (radio)
-  const wlab=document.createElement("span"); wlab.className="lbl"; wlab.textContent="Peso";
-  wlab.style.marginLeft="8px"; oc.appendChild(wlab);
-  const modes=[["vol","Vol","Volumen negociado (recomendado)"],
-               ["oi","OI","Open Interest total real"],
-               ["oidelta","OI Δ","Cambio de OI: posiciones nuevas por vela"]];
-  const wbtns={};
-  modes.forEach(([id,txt,tip])=>{
-    const b=document.createElement("button"); b.className="pill"+(state.weightMode===id?" on":"");
-    b.textContent=txt; b.title=tip; wbtns[id]=b;
-    b.onclick=async()=>{
-      if(state.weightMode===id) return;
-      state.weightMode=id;
-      Object.values(wbtns).forEach(x=>x.classList.remove("on")); b.classList.add("on");
-      setStatus("cargando "+txt+"…","");
-      await fetchOI(); applyOItoCandles();
-      computeHeatmap(); buildStatic(); updateTargets();
-      const live=state.ws&&state.ws.readyState===1;
-      setStatus((live?"en vivo · ":"")+symName(state.symbol)+(id!=="vol"?" · "+txt:""), live?"ok":"");
-    };
-    oc.appendChild(b);
-  });
-  // control de color (junto a la leyenda del imán)
-  const sl=$("#gammaSlider");
-  if(sl){ sl.value=CONFIG.gamma; sl.oninput=()=>{ CONFIG.gamma=+sl.value; if(state.grid) buildStatic(); }; }
-  // botón de recarga (conserva el zoom)
-  const rb=$("#refreshBtn");
-  if(rb) rb.onclick=async()=>{
-    rb.classList.remove("spin"); void rb.offsetWidth; rb.classList.add("spin");
-    rb.disabled=true;
-    // guarda la vista actual
-    const z={uz:state.userZoom, lo:state.viewLo, hi:state.viewHi,
-             uzx:state.userZoomX, x0:state.x0, x1:state.x1};
-    await reload();                 // recalcula velas + zonas + objetivos
-    // restaura la vista si había zoom
-    if(z.uz && z.lo!=null){ state.userZoom=true; state.viewLo=z.lo; state.viewHi=z.hi; }
-    if(z.uzx && z.x0!=null){ state.userZoomX=true; state.x0=z.x0; state.x1=z.x1; }
-    if(z.uz||z.uzx){ computeHeatmap(); buildStatic(); updateTargets(); }
-    rb.disabled=false;
-  };
+  $("#heatmapBtn").onclick=e=>{ state.showHeatmap=!state.showHeatmap;
+    e.target.classList.toggle("on",state.showHeatmap); render(); };
+  $("#macroBtn").onclick=e=>{ state.showHTF=!state.showHTF;
+    e.target.classList.toggle("on",state.showHTF);
+    if(state.showHTF) fetchHtf().then(render); else { state.htfZones=[]; render(); } };
+  $("#oiBtn").onclick=e=>{ state.useOI=!state.useOI;
+    e.target.classList.toggle("on",state.useOI);
+    fetchOI().then(()=>{ compute(); render(); }); };
+  $("#bookBtn").onclick=e=>{ state.showBook=!state.showBook;
+    e.target.classList.toggle("on",state.showBook);
+    if(state.showBook) fetchBook().then(render); else { state.bookWalls=[]; render(); } };
+  const bu=$("#bookUsdSel");
+  bu.value=String(state.bookMinUsd);
+  bu.onchange=()=>{ state.bookMinUsd=+bu.value; savePrefs();
+    state.bookTracked=[]; procesarBook(); render(); };   // re-filtra al instante, sin pedir a Binance
+  $("#reactBtn").onclick=e=>{ state.showReact=!state.showReact;
+    e.target.classList.toggle("on",state.showReact); render(); };
+  $("#heatBtn").onclick=e=>{ state.showHeat=!state.showHeat;
+    e.target.classList.toggle("on",state.showHeat); render(); };
+  const cf=$("#confSel");
+  cf.value=state.confMode;
+  cf.onchange=()=>{ state.confMode=cf.value; savePrefs(); render(); };
+  $("#vpBtn").onclick=e=>{ state.showVP=!state.showVP;
+    e.target.classList.toggle("on",state.showVP); render(); };
+  const setRows=v=>{ state.vpRows=Math.max(50,Math.min(5000,v));
+    $("#rowVal").textContent=state.vpRows; render(); };
+  $("#rowMinus").onclick=()=>setRows(state.vpRows-250);
+  $("#rowPlus").onclick=()=>setRows(state.vpRows+250);
+  $("#refreshBtn").onclick=()=>reload();
+  // control de contraste del heatmap (resaltar ↔ desvanecer)
+  const gs=$("#gammaSlider");
+  if(gs){ gs.value=CONFIG.gamma;
+    gs.oninput=()=>{ CONFIG.gamma=+gs.value; savePrefs(); render(); }; }
 }
-function selectSymbol(s){
-  state.symbol=s; $("#psym").textContent=symName(s);
-  document.querySelectorAll("#symbols .ddopt").forEach(b=>b.classList.toggle("on", b.dataset.sym===s));
-  const trigs=document.querySelectorAll("#symbols .dtrig");
-  CONFIG.groups.forEach((g,gi)=>{ const t=trigs[gi]; if(!t)return; const has=g.symbols.includes(s);
-    t.innerHTML=g.label+(has?' · <b>'+symName(s)+'</b>':'')+' <span class="car">▾</span>'; });
-  reload();
-}
-function setStatus(txt,cls){ $("#stxt").textContent=txt; const d=$("#sdot");
-  d.className="dot"+(cls?(" "+cls):""); }
+const setStatus=(t,c)=>{$("#stxt").textContent=t;$("#sdot").className="dot"+(c?" "+c:"");};
+function savePrefs(){ try{ localStorage.setItem("mapaSimple",
+  JSON.stringify({symbol:state.symbol, tf:state.tf, confMode:state.confMode, bookMinUsd:state.bookMinUsd, gamma:CONFIG.gamma})); }catch(e){} }
 
-/* ---------- DATOS ---------- */
-async function fetchKlines(){
-  state.limit = CONFIG.limitByTf[state.tf]||200;
-  const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=${state.tf}&limit=${state.limit}`;
-  const r=await fetch(url); if(!r.ok) throw new Error("klines "+r.status);
+/* ---- DATOS ---- */
+async function fetchData(){
+  const lim=CONFIG.limitByTf[state.tf]||240;
+  const r=await fetch(`${CONFIG.rest}?symbol=${state.symbol}&interval=${state.tf}&limit=${lim}`);
+  if(!r.ok) throw new Error("klines "+r.status);
   const raw=await r.json();
-  state.candles = raw.map(k=>({t:k[0], open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5], qvol:+k[7], tbq:+k[10]}));
-  state.livePrice = state.candles.length? state.candles[state.candles.length-1].close : null;
+  state.candles=raw.map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],q:+k[7],tb:+k[10],oiUp:1}));
+  state.livePrice=state.candles[state.candles.length-1].c;
+  state.klineIv=state.tf;
+  await fetchOI();
 }
 
+/* ---- OPEN INTEREST: peso extra a velas donde entró OI nuevo (dinero real) ---- */
 async function fetchOI(){
-  if(state.weightMode==="vol"){ state.oiMap=null; return; }
+  if(!state.useOI){ state.candles.forEach(k=>k.oiUp=1); return; }
+  const oiPeriod={ "5m":"5m","15m":"15m","1h":"1h","4h":"4h","1d":"1d" }[state.tf]||"1h";
   try{
-    const url=`${CONFIG.oiHist}?symbol=${state.symbol}&period=${state.tf}&limit=500`;
-    const r=await fetch(url); if(!r.ok) throw new Error("oi "+r.status);
+    const r=await fetch(`${CONFIG.oiHist}?symbol=${state.symbol}&period=${oiPeriod}&limit=500`);
+    if(!r.ok) return;
     const raw=await r.json();
-    const m=new Map();
-    for(const o of raw){ m.set(+o.timestamp, +o.sumOpenInterestValue); }  // OI en USDT
-    state.oiMap = m.size? m : null;
-  }catch(e){ state.oiMap=null; console.warn("OI no disponible", e); }
+    if(!raw.length) return;
+    const oiT=raw.map(o=>o.timestamp), oiV=raw.map(o=>+o.sumOpenInterest);
+    // para cada vela, halla el OI del momento más cercano
+    const oiVals=state.candles.map(k=>{
+      let best=null,bd=Infinity;
+      for(let j=0;j<oiT.length;j++){ const d=Math.abs(oiT[j]-k.t); if(d<bd){bd=d;best=oiV[j];} }
+      return best;
+    });
+    for(let i=1;i<state.candles.length;i++){
+      const cur=oiVals[i], prev=oiVals[i-1];
+      if(cur==null||prev==null||prev<=0){ state.candles[i].oiUp=1; continue; }
+      const delta=(cur-prev)/prev;
+      state.candles[i].oiUp = delta>0 ? Math.min(1+delta*8, 2.5) : 1;   // OI creciente, acotado a 2.5x
+    }
+  }catch(e){}
 }
-// asigna a cada vela su Open Interest (arrastra el último conocido; 0 si aún no hay)
-function applyOItoCandles(){
-  const m=state.oiMap;
-  if(state.weightMode==="vol" || !m){ for(const k of state.candles) k.oi=0; return; }
-  const ts=[...m.keys()].sort((a,b)=>a-b);
-  let j=0, last=0;
-  for(const k of state.candles){
-    while(j<ts.length && ts[j]<=k.t){ last=m.get(ts[j]); j++; }
-    k.oi = last;   // 0 para velas anteriores al primer dato de OI
+
+/* ---- WEBSOCKET DE PROFUNDIDAD: mantiene el libro COMPLETO (rango amplio, como Coinglass) ---- */
+function connectDepthWs(){
+  if(state.depthWs){ try{state.depthWs.onclose=null; state.depthWs.close();}catch(e){} }
+  state.depthBook={bids:new Map(), asks:new Map()};
+  const s=state.symbol.toLowerCase();
+  // stream de profundidad: actualizaciones incrementales del libro completo
+  const ws=new WebSocket(`wss://fstream.binance.com/stream?streams=${s}@depth@500ms`);
+  state.depthWs=ws;
+  ws.onmessage=e=>{
+    let msg; try{ msg=JSON.parse(e.data); }catch(_){ return; }
+    const d=msg.data; if(!d) return;
+    // aplica las actualizaciones al libro acumulado (b=bids, a=asks)
+    for(const [p,q] of (d.b||[])){ const price=+p, qty=+q;
+      if(qty===0) state.depthBook.bids.delete(price); else state.depthBook.bids.set(price,qty); }
+    for(const [p,q] of (d.a||[])){ const price=+p, qty=+q;
+      if(qty===0) state.depthBook.asks.delete(price); else state.depthBook.asks.set(price,qty); }
+    state.depthLastMsg=Date.now();
+  };
+  ws.onclose=()=>{ if(state.depthWs!==ws) return; state.depthWs=null; setTimeout(connectDepthWs,2500); };
+}
+
+/* ---- LIBRO DE ÓRDENES REAL: trae el libro y guarda las zonas crudas ---- */
+async function fetchBook(){
+  if(!state.showBook){ state.bookWalls=[]; return; }
+  try{
+    let bids, asks;
+    // PREFERIR el libro completo del WebSocket (rango amplio, como Coinglass)
+    const wsBids=state.depthBook.bids, wsAsks=state.depthBook.asks;
+    if(wsBids.size>50 && wsAsks.size>50){
+      bids=[...wsBids].map(([price,qty])=>({price,qty,side:"bid"}));
+      asks=[...wsAsks].map(([price,qty])=>({price,qty,side:"ask"}));
+      state.bookErr=null;
+    } else {
+      // respaldo: REST (rango corto ±0.5%) mientras el WS llena el libro
+      const r=await fetch(`${CONFIG.depth}?symbol=${state.symbol}&limit=1000`);
+      if(!r.ok){ state.bookErr="HTTP "+r.status; state.bookWalls=[]; return; }
+      const d=await r.json();
+      bids=(d.bids||[]).map(x=>({price:+x[0], qty:+x[1], side:"bid"}));
+      asks=(d.asks||[]).map(x=>({price:+x[0], qty:+x[1], side:"ask"}));
+      state.bookErr=null;
+    }
+    const all=[...bids,...asks].filter(o=>o.qty>0);
+    if(!all.length){ state.bookErr="libro vacío"; state.bookWalls=[]; return; }
+    const price=state.livePrice||all[0].price;
+
+    // binSize FIJO por par → los muros no se mueven de nivel
+    if(!state.bookBin || state.bookBinSym!==state.symbol){
+      state.bookBin = price*0.0015; state.bookBinSym=state.symbol;
+    }
+    const binSize=state.bookBin;
+    const zonasMap=new Map();
+    for(const o of all){
+      const bin=Math.round(o.price/binSize);
+      const key=o.side+"_"+bin;
+      if(!zonasMap.has(key)) zonasMap.set(key,{price:bin*binSize, qty:0, side:o.side, ordenes:0});
+      const z=zonasMap.get(key);
+      z.qty+=o.qty; z.ordenes++;
+    }
+    // guarda las zonas crudas + rango del libro (para re-filtrar al instante al cambiar umbral)
+    state.bookRaw=[...zonasMap.values()];
+    const precios=all.map(o=>o.price);
+    state.bookLo=Math.min(...precios); state.bookHi=Math.max(...precios);
+    procesarBook();
+  }catch(e){ state.bookErr="sin conexión (libro)"; state.bookWalls=[]; }
+}
+
+/* ---- procesa las zonas crudas según el umbral (instantáneo, sin pedir a Binance) ---- */
+function procesarBook(){
+  const zonas=state.bookRaw; if(!zonas||!zonas.length) return;
+  const price=state.livePrice||0;
+  const minUsd=state.bookMinUsd||1000000;
+  const detectados=zonas
+    .map(z=>({price:z.price, qty:z.qty, side:z.side, usd:z.qty*z.price, ordenes:z.ordenes}))
+    .filter(z=>z.usd>=minUsd);
+
+  const tol=price*0.0018;
+  const bookLo=state.bookLo, bookHi=state.bookHi;
+  const tracked=state.bookTracked||[];
+
+  // 1) actualiza los muros que ya seguíamos
+  for(const t of tracked){
+    const m=detectados.find(z=>z.side===t.side && Math.abs(z.price-t.price)<=tol);
+    if(m){ t.qty=m.qty; t.usd=m.usd; t.ordenes=m.ordenes; t.missed=0; }  // actualiza tamaño, NO el precio (queda fijo)
+    else {
+      const dentroRango = t.price>=bookLo && t.price<=bookHi;
+      if(dentroRango) t.missed += 0.34;   // sigue en rango pero encogió: aguanta
+      else t.missed += 0.15;              // fuera del rango del libro: aguanta más
+    }
+    // MITIGADO: el precio ha ATRAVESADO el muro → consumido, fuera al instante
+    t.mitigado = (t.side==="bid" && price < t.price - tol) || (t.side==="ask" && price > t.price + tol);
   }
+  // 2) añade muros nuevos (solo los que superan el umbral)
+  for(const z of detectados){
+    if(!tracked.find(t=>t.side===z.side && Math.abs(z.price-t.price)<=tol))
+      tracked.push({...z, missed:0, mitigado:false});
+  }
+  // 3) SOLO se quita si: el precio lo mitigó, O lleva mucho ausente (retirado de verdad)
+  state.bookTracked=tracked.filter(t=> !t.mitigado && t.missed<10);
+  // 4) muestra los vigentes
+  state.bookWalls=state.bookTracked
+    .map(t=>({price:t.price, qty:t.qty, side:t.side, usd:t.usd, ordenes:t.ordenes}))
+    .sort((a,b)=>b.usd-a.usd)
+    .slice(0,10);
+  if(!state.bookWalls.length) state.bookErr="sin muros ≥ "+usd(state.bookMinUsd||1000000);
 }
 
-// calcula las zonas fuertes de un set de velas (modelo por volumen + taker)
-function htfZones(cands, levs){
-  if(!cands||!cands.length) return [];
-  const N=cands.length, ROWS=140;
-  let lo=Infinity,hi=-Infinity;
-  for(const k of cands){ if(k.low<lo)lo=k.low; if(k.high>hi)hi=k.high;
-    for(const L of levs){ const dl=k.close*(1-1/L),sl=k.close*(1+1/L); if(dl<lo)lo=dl; if(sl>hi)hi=sl; } }
-  const pad=(hi-lo)*0.015; lo-=pad; hi+=pad; const bucket=(hi-lo)/ROWS;
-  const rowOf=p=>{ const r=Math.floor((p-lo)/bucket); return (r<0||r>=ROWS)?-1:r; };
-  const grid=Array.from({length:N},()=>new Float64Array(ROWS));
-  let active=[]; const perL=1/levs.length;
-  for(let i=0;i<N;i++){ const k=cands[i]; const still=[];
-    for(const a of active){ if(a.price>=k.low&&a.price<=k.high){ if(a.row>=0) for(let col=a.start;col<=i;col++) grid[col][a.row]+=a.vol; } else still.push(a); }
-    active=still;
-    let lf=(k.qvol>0)?(k.tbq||0)/k.qvol:0.5; if(lf<0)lf=0; if(lf>1)lf=1; const sf=1-lf;
-    for(const L of levs){ const dl=k.close*(1-1/L),sl=k.close*(1+1/L);
-      active.push({row:rowOf(dl),price:dl,vol:k.qvol*lf*perL,start:i});
-      active.push({row:rowOf(sl),price:sl,vol:k.qvol*sf*perL,start:i}); } }
-  for(const a of active){ if(a.row>=0) for(let col=a.start;col<N;col++) grid[col][a.row]+=a.vol; }
-  const prof=new Float64Array(ROWS);
-  for(let r=0;r<ROWS;r++){ let mx=0; for(let i=0;i<N;i++){ const v=grid[i][r]; if(v>mx)mx=v; } prof[r]=mx; }
-  const price=cands[N-1].close, zones=[];
-  for(let r=0;r<ROWS;r++){ const v=prof[r]; if(v>0){ const p=lo+(r+0.5)*bucket; zones.push({price:p,v}); } }
-  zones.sort((a,b)=>b.v-a.v);
-  return zones.slice(0,5);
-}
-async function fetchHTF(){
-  const htf=HTF_FOR[state.tf];
-  if(!state.showHTF || !htf){ state.htfZones=[]; state.htfTf=null; return; }
-  try{
-    const lim=CONFIG.limitByTf[htf]||200;
-    const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=${htf}&limit=${lim}`;
-    const r=await fetch(url); if(!r.ok) throw new Error("htf "+r.status);
-    const raw=await r.json();
-    const cands=raw.map(k=>({open:+k[1],high:+k[2],low:+k[3],close:+k[4],qvol:+k[7],tbq:+k[10]}));
-    state.htfZones=htfZones(cands, state.leverages); state.htfTf=htf;
-  }catch(e){ state.htfZones=[]; state.htfTf=null; console.warn("HTF no disponible",e); }
-}
-
-async function reload(){
-  state.switching=true; clearTimeout(state.reconnectT); closeWS();
-  state.liqs=[]; state.liqTot5m=0; state.lsBuy=0; state.lsSell=0; state.lsLive=false;
-  state.track=[]; state.hits=0; state.misses=0;
-  state.userZoom=false; state.viewLo=null; state.viewHi=null;
-  state.userZoomX=false; state.x0=null; state.x1=null;
-  setStatus("cargando "+state.symbol.replace("USDT","")+" "+state.tf+"…","");
-  try{
-    await fetchKlines();
-    await fetchOI(); applyOItoCandles();
-    await fetchHTF();
-    $("#price b").textContent = state.livePrice? fmt(state.livePrice) : "—";
-    computeHeatmap(); buildStatic(); updateTargets();
-    pollLS();
-    poll24h();
-    connectWS();
-  }catch(e){ setStatus("error datos ("+e.message+")","err"); console.error(e); }
-  state.switching=false;
-}
-
-/* ---------- MODELO DE LIQUIDEZ (heatmap) ----------
-   Para cada vela, asumimos posiciones abiertas al precio de cierre.
-   Con cada apalancamiento L calculamos dónde se liquidarían:
-     long  -> precio * (1 - 1/L)   (imán abajo)
-     short -> precio * (1 + 1/L)   (imán arriba)
-   Esa "liquidez" persiste en el tiempo hasta que el precio la toca
-   (se liquida). Zonas más brillantes = más liquidez acumulada = imán. */
-function computeHeatmap(){
+/* ---- MODELO: liquidez estimada por nivel de precio ---- */
+function compute(){
   const c=state.candles; if(!c.length) return;
-  const levs=state.leverages, N=c.length, ROWS=CONFIG.rows;
-
-  // rango de datos (todo lo que existe)
-  let lo=Infinity, hi=-Infinity;
-  for(const k of c){ if(k.low<lo)lo=k.low; if(k.high>hi)hi=k.high;
-    for(const L of levs){ const dl=k.close*(1-1/L), sl=k.close*(1+1/L);
-      if(dl<lo)lo=dl; if(sl>hi)hi=sl; } }
-  const pad=(hi-lo)*0.015; lo-=pad; hi+=pad;
-  state.priceLo=lo; state.priceHi=hi;
-  if(!state.userZoom || state.viewLo==null){ state.viewLo=lo; state.viewHi=hi; }
-  if(state.x0==null || !state.userZoomX){ state.x0=0; state.x1=N-1; }
-  else { state.x0=Math.max(0,Math.min(state.x0,N-1)); state.x1=Math.max(state.x0+1,Math.min(state.x1,N-1)); }
-
-  // rango de BINNING = lo que se ve (con zoom da máxima nitidez), si no, todo
-  const bLo=lo, bHi=hi;                  // grid siempre sobre TODO el rango -> prioridades estables
-  const bucket=(bHi-bLo)/ROWS;
-  const rowOf=p=>{ const r=Math.floor((p-bLo)/bucket); return (r<0||r>=ROWS)? -1 : r; };
-
-  const grid=Array.from({length:N},()=>new Float64Array(ROWS));
-  let active=[]; const perL=1/levs.length;
-
+  const N=c.length, R=CONFIG.rows, levs=state.levs;
+  let lo=Infinity,hi=-Infinity;
+  for(const k of c){ if(k.l<lo)lo=k.l; if(k.h>hi)hi=k.h;
+    for(const L of levs){ const a=k.c*(1-1/L), b=k.c*(1+1/L); if(a<lo)lo=a; if(b>hi)hi=b; } }
+  const pad=(hi-lo)*0.01; lo-=pad; hi+=pad;
+  const bucket=(hi-lo)/R, rowOf=p=>{const r=Math.floor((p-lo)/bucket);return (r<0||r>=R)?-1:r;};
+  const grid=Array.from({length:N},()=>new Float64Array(R));
+  let live=[];
+  // MODELO PRECISO (igual que el mapa Coinglass): reparto real por apalancamiento
+  // + solo una fracción del volumen abre posición. Esto da zonas más nítidas.
+  const LEVSHARE={10:0.35, 25:0.30, 50:0.22, 100:0.13};
+  const OF=CONFIG.openFrac;
   for(let i=0;i<N;i++){
-    const k=c[i]; const still=[];
-    let w=k.qvol;                                        // por defecto: volumen
-    if(state.oiMap && state.weightMode!=="vol"){
-      if(state.weightMode==="oi") w=k.oi||0;             // OI total
-      else { const prev=i>0?(c[i-1].oi||0):0; w=Math.abs((k.oi||0)-prev)||0; }  // OI Δ (posiciones nuevas)
+    const k=c[i], keep=[];
+    for(const a of live){
+      if(a.p>=k.l && a.p<=k.h){ if(a.r>=0) for(let j=a.s;j<=i;j++) grid[j][a.r]+=a.v; }   // liquidada
+      else keep.push(a);
     }
-    for(const a of active){
-      if(a.price>=k.low && a.price<=k.high){        // liquidada en esta vela
-        if(a.row>=0) for(let col=a.start; col<=i; col++) grid[col][a.row]+=a.vol;
-      } else still.push(a);
-    }
-    active=still;
-    // reparto REAL long/short según volumen taker (compra vs venta agresiva)
-    let lf = (k.qvol>0) ? (k.tbq||0)/k.qvol : 0.5;
-    if(lf<0)lf=0; if(lf>1)lf=1; const sf=1-lf;
+    live=keep;
+    let lf=(k.q>0)?(k.tb||0)/k.q:0.5; lf=Math.max(0,Math.min(1,lf));
+    const oiW=Math.min(k.oiUp||1, 3.5);                  // peso OI acotado (equilibrio: destaca sin aplastar)
+    const nuevo=k.q*OF*oiW;                              // volumen ponderado por OI (acotado)
     for(const L of levs){
-      const dl=k.close*(1-1/L), sl=k.close*(1+1/L);
-      active.push({row:rowOf(dl),price:dl,vol:w*lf*perL,start:i});   // longs -> liquidez abajo
-      active.push({row:rowOf(sl),price:sl,vol:w*sf*perL,start:i});   // shorts -> liquidez arriba
+      const share=LEVSHARE[L]||0.25;
+      const dl=k.c*(1-1/L), sl=k.c*(1+1/L);
+      live.push({r:rowOf(dl),p:dl,v:nuevo*lf*share,s:i});
+      live.push({r:rowOf(sl),p:sl,v:nuevo*(1-lf)*share,s:i});
     }
   }
-  for(const a of active){ if(a.row>=0) for(let col=a.start; col<N; col++) grid[col][a.row]+=a.vol; }
+  for(const a of live){ if(a.r>=0) for(let j=a.s;j<N;j++) grid[j][a.r]+=a.v; }
 
-  // normalización por percentil (para el color)
+  // el precio actual consume la liquidez que ya atravesó (zonas más limpias, como Coinglass)
+  const lp=state.livePrice, lastK=c[N-1];
+  if(lp){ const hiNow=Math.max(lastK.h,lp), loNow=Math.min(lastK.l,lp);
+    for(let r=0;r<R;r++){ const p=lo+(r+0.5)*bucket;
+      if(p>=loNow && p<=hiNow){ for(let i=0;i<N;i++) grid[i][r]=0; } }   // barrida
+  }
+  const prof=new Float64Array(R); let gmax=0;
+  for(let r=0;r<R;r++){ let m=0; for(let i=0;i<N;i++){const v=grid[i][r]; if(v>m)m=v;} prof[r]=m; if(m>gmax)gmax=m; }
+
+  // NORMALIZACIÓN POR PERCENTIL (como el mapa original): hace que las zonas fuertes
+  // salgan AMARILLAS de verdad, en vez de que solo la máxima destaque.
   const vals=[];
-  for(let i=0;i<N;i++) for(let r=0;r<ROWS;r++){ const v=grid[i][r]; if(v>0)vals.push(v); }
+  for(let i=0;i<N;i++) for(let r=0;r<R;r++){ const v=grid[i][r]; if(v>0) vals.push(v); }
   vals.sort((a,b)=>a-b);
-  const pN = vals.length? vals[Math.floor(vals.length*CONFIG.normPct)] : 1;
+  const pN = vals.length? vals[Math.floor(vals.length*0.96)] : 1;   // percentil 96
+  Object.assign(state,{grid,gridMax:pN||gmax||1,profile:prof,lo,hi,bucket});
 
-  // PERFIL = máximo de liquidez por nivel a lo largo del tiempo.
-  // Así, lo que se ve amarillo (fuerte) en el heatmap coincide con la barra del panel.
-  const profile=new Float64Array(ROWS);
-  for(let r=0;r<ROWS;r++){ let mx=0; for(let i=0;i<N;i++){ const v=grid[i][r]; if(v>mx)mx=v; } profile[r]=mx; }
-
-  state.grid=grid; state.gridMax=pN||1;
-  state.binLo=bLo; state.binHi=bHi; state.bucket=bucket;
-  state.profile=profile;
-
-  // zonas = PICOS del perfil (agrupa filas contiguas en una sola banda)
-  const price=state.livePrice||c[N-1].close;
-  let pmaxP=0; for(let r=0;r<ROWS;r++) if(profile[r]>pmaxP) pmaxP=profile[r];
-  const MINV = pmaxP*0.06;                     // ignora ruido muy débil
-  const zones=[];
-  let r=0;
-  while(r<ROWS){
-    if(profile[r]<=MINV){ r++; continue; }
-    // recorre la banda contigua y se queda con su fila más fuerte
-    let best=r, bv=profile[r], e=r;
-    while(e+1<ROWS && profile[e+1]>MINV){ e++; if(profile[e]>bv){ bv=profile[e]; best=e; } }
-    zones.push({price:bLo+(best+0.5)*bucket, v:bv, above:(bLo+(best+0.5)*bucket)>price, row:best});
-    r=e+1;
+  // velas visibles: ancho objetivo ~7px por vela, con hueco a la derecha
+  if(state.x0==null){
+    const px=(cv.clientWidth*0.74)-10;
+    const nn=Math.max(40, Math.min(N, Math.round(px/7)));
+    const pad=Math.round(nn*0.12);        // ~12% de hueco a la derecha (la vela actual no pegada al borde)
+    state.x1=N-1+pad; state.x0=state.x1-nn;
+    if(state.x0<0) state.x0=0;
   }
+  state.x1=Math.min(state.x1, N-1+Math.round((state.x1-state.x0)*0.15));
+  if(state.x0>=state.x1) state.x0=Math.max(0,state.x1-30);
+
+  // vista vertical: ceñida al rango de las velas VISIBLES (con más margen para centrar)
+  if(!state.userZoom||state.viewLo==null){
+    const i0=Math.max(0,Math.floor(state.x0)), i1=Math.min(N-1,Math.ceil(state.x1));
+    let cl=Infinity, ch=-Infinity;
+    for(let i=i0;i<=i1;i++){ if(c[i].l<cl)cl=c[i].l; if(c[i].h>ch)ch=c[i].h; }
+    const rng=(ch-cl)||ch*0.01, mg=rng*0.38;   // más margen arriba/abajo = velas centradas
+    state.viewLo=cl-mg; state.viewHi=ch+mg;
+  }
+
+  // calcula el volumen real (VRVP) ANTES de las zonas, para reforzarlas con dato duro
+  computeVP();
+  // zonas dentro del rango visible
+  computeZones(prof, gmax, lo, bucket, R);
+  // zonas donde el precio YA reaccionó (liquidez probada por el mercado)
+  computeReactZones();
+  // ZONAS DE CALOR: fusiona todas las señales en niveles institucionales fuertes
+  computeHeatZones();
+}
+
+/* ---- ZONAS DE CALOR: agrupa toda la liquidez (estimada + real) en niveles fundamentales ---- */
+function computeHeatZones(){
+  const c=state.candles, N=c.length; if(!N){ state.heatZones=[]; return; }
+  const price=state.livePrice||c[N-1].c;
+  const tol=price*0.0025;   // 0.25%: niveles dentro de esta distancia = misma zona
+
+  // recolecta TODAS las señales con un peso base según su fiabilidad
+  const señales=[];
+  // zonas estimadas (peso por fuerza)
+  (state.zones||[]).forEach(z=> señales.push({price:z.price, peso:1.0*(z.confirmada?1.5:1), tipo:"liq"}));
+  // POC = volumen real (peso alto, es dato duro)
+  if(state.vp&&state.vpBk){ const poc=state.vpLo+(state.vpPoc+0.5)*state.vpBk;
+    señales.push({price:poc, peso:2.0, tipo:"poc"}); }
+  // reacciones probadas (peso por nº de toques)
+  (state.reactZones||[]).forEach(z=> señales.push({price:z.price, peso:1.3*(1+(z.toques-1)*0.3), tipo:"react"}));
+  // muros reales del libro (peso alto, liquidez real puesta)
+  (state.bookWalls||[]).forEach(w=> señales.push({price:w.price, peso:1.8, tipo:"muro"}));
+  // zonas macro 4h (peso alto, temporalidad mayor)
+  (state.htfZones||[]).forEach(z=> señales.push({price:z.price, peso:1.6, tipo:"macro"}));
+
+  if(!señales.length){ state.heatZones=[]; return; }
+
+  // AGRUPA señales cercanas en zonas de calor
+  señales.sort((a,b)=>a.price-b.price);
+  const grupos=[];
+  for(const s of señales){
+    const g=grupos.find(x=>Math.abs(x.price-s.price)<=tol);
+    if(g){ g.calor+=s.peso; g.tipos.add(s.tipo);
+      g.price=(g.price*g.n+s.price)/(g.n+1); g.n++; }
+    else grupos.push({price:s.price, calor:s.peso, tipos:new Set([s.tipo]), n:1});
+  }
+  // clasifica short (arriba) / long (abajo) y ordena por calor
+  grupos.forEach(g=>{ g.lado = g.price>price? "short":"long";
+    g.fuentes=g.tipos.size; });   // cuántas señales DISTINTAS coinciden = calidad
+  grupos.sort((a,b)=>b.calor-a.calor);
+  // solo las zonas realmente calientes (2+ señales distintas O calor alto)
+  const fuertes=grupos.filter(g=>g.fuentes>=2 || g.calor>=2.5);
+  state.heatZones=fuertes.slice(0,8);
+}
+
+/* ---- ZONAS DE REACCIÓN: donde el precio rechazó fuerte antes (liquidez REAL probada) ---- */
+function computeReactZones(){
+  const c=state.candles, N=c.length; if(N<10){ state.reactZones=[]; return; }
+  const price=state.livePrice||c[N-1].c;
+  // ATR aproximado para medir qué mecha es "grande"
+  let atr=0; for(let i=Math.max(1,N-50);i<N;i++) atr+=(c[i].h-c[i].l); atr/=Math.min(50,N-1);
+  const zonas=[];
+  const W=3;   // pivote: máximo/mínimo local en ±3 velas
+  for(let i=W;i<N-W;i++){
+    const k=c[i];
+    // ¿es un swing high? (máximo local) con MECHA SUPERIOR grande = rechazo real
+    let esHigh=true, esLow=true;
+    for(let d=-W;d<=W;d++){ if(c[i+d].h>k.h)esHigh=false; if(c[i+d].l<k.l)esLow=false; }
+    const mechaUp=k.h-Math.max(k.o,k.c);      // mecha superior
+    const mechaDn=Math.min(k.o,k.c)-k.l;      // mecha inferior
+    // swing high con rechazo: mecha superior ≥ 60% del ATR
+    if(esHigh && mechaUp>=atr*0.6){
+      const fuerza=mechaUp/atr;
+      zonas.push({price:k.h, side:"high", fuerza, toques:1, idx:i});
+    }
+    if(esLow && mechaDn>=atr*0.6){
+      const fuerza=mechaDn/atr;
+      zonas.push({price:k.l, side:"low", fuerza, toques:1, idx:i});
+    }
+  }
+  // agrupa zonas cercanas (mismo nivel tocado varias veces = más fuerte)
+  const tol=atr*0.5, agrup=[];
+  zonas.sort((a,b)=>b.fuerza-a.fuerza);
+  for(const z of zonas){
+    const cerca=agrup.find(g=>Math.abs(g.price-z.price)<=tol && g.side===z.side);
+    if(cerca){ cerca.toques++; cerca.fuerza=Math.max(cerca.fuerza,z.fuerza); }
+    else agrup.push({...z});
+  }
+  // solo las que NO ha atravesado el precio aún (siguen siendo objetivo)
+  // y ordena por fuerza × toques (más rechazos = liquidez más probada)
+  agrup.forEach(z=> z.score=z.fuerza*(1+z.toques*0.4));
+  agrup.sort((a,b)=>b.score-a.score);
+  state.reactZones=agrup.slice(0,6);
+}
+
+// detecta las zonas (FIJAS: sobre todo el rango, no cambian al hacer zoom)
+function computeZones(prof, gmax, lo, bucket, R){
+  const MIN=gmax*0.35, cand=[];            // muros ≥35% del máximo
+  for(let r=1;r<R-1;r++){ const v=prof[r]; if(v<=MIN)continue;
+    if(v>=prof[r-1] && v>=prof[r+1]) cand.push({row:r, v, price:lo+(r+0.5)*bucket}); }
+  cand.sort((a,b)=>b.v-a.v);
+  const zones=[]; const sepRows=Math.round(R*0.02);
+  for(const z of cand){ if(zones.some(q=>Math.abs(q.row-z.row)<sepRows)) continue;
+    zones.push(z); if(zones.length>=CONFIG.topN) break; }
   zones.sort((a,b)=>b.v-a.v);
-  state.topZones=zones.slice(0,16);
-}
-
-// PERFIL DE VOLUMEN VISIBLE (VRVP): se recalcula con el zoom, sobre las velas y precios en pantalla
-function computeVP(){
-  const c=state.candles; if(!c.length || state.viewLo==null) return;
-  const VR=Math.max(20,Math.min(2000,state.vpRows||150));
-  const lo=state.viewLo, hi=state.viewHi, vpk=(hi-lo)/VR;
-  const i0=Math.max(0,Math.floor(state.x0)), i1=Math.min(c.length-1,Math.ceil(state.x1));
-  const vp=new Float64Array(VR);
-  for(let i=i0;i<=i1;i++){ const k=c[i]; const vol=k.qvol||0; if(vol<=0)continue;
-    let r0=Math.floor((k.low-lo)/vpk), r1=Math.floor((k.high-lo)/vpk);
-    if(r1<0||r0>=VR) continue;                       // vela fuera del rango visible
-    if(r0<0)r0=0; if(r1>=VR)r1=VR-1; if(r1<r0){const t=r0;r0=r1;r1=t;}
-    const per=vol/(r1-r0+1); for(let r=r0;r<=r1;r++) vp[r]+=per;
+  // PRIORIDAD REAL: fuerza estimada + cercanía + RESPALDO DE VOLUMEN REAL (VRVP)
+  const price=state.livePrice||0;
+  const vmax=zones.length? zones[0].v : 1;
+  // ¿cuánto volumen real hay cerca de cada zona? (confirma la liquidez estimada con dato duro)
+  const volEnZona=zPrice=>{
+    if(!state.vp||!state.vpBk) return 0;
+    const vlo=state.vpLo, bk=state.vpBk, R2=state.vpRows;
+    const rc=Math.floor((zPrice-vlo)/bk);
+    let suma=0;
+    for(let d=-2;d<=2;d++){ const r=rc+d; if(r>=0&&r<R2) suma+=state.vp[r]; }  // ±2 filas alrededor
+    return suma;
+  };
+  if(price>0){
+    // máximo de volumen real entre las zonas (para normalizar)
+    let vpZmax=0; zones.forEach(z=>{ const v=volEnZona(z.price); if(v>vpZmax)vpZmax=v; });
+    if(vpZmax<=0) vpZmax=1;
+    zones.forEach(z=>{
+      const dist=Math.abs(z.price-price)/price;
+      const fuerza=z.v/vmax;                            // liquidez estimada (0..1)
+      const cercania=1/(1+dist*80);
+      const volReal=volEnZona(z.price)/vpZmax;          // volumen real cerca (0..1)
+      z.volReal=volReal;
+      // score = estimado × cercanía, REFORZADO si hay volumen real (dato duro) confirmando
+      z.score=fuerza*cercania*(0.55+volReal*0.9);       // hasta +90% si el volumen real la respalda
+      z.confirmada = volReal>=0.4;                       // marca zonas con respaldo real fuerte
+    });
+    const orden=[...zones].sort((a,b)=>b.score-a.score);
+    orden.forEach((z,i)=> z.rank=i+1);
   }
-  let poc=0, pv=0; for(let r=0;r<VR;r++){ if(vp[r]>pv){pv=vp[r];poc=r;} }
-  state.vp=vp; state.vpPoc=poc; state.vpMax=pv||1; state.vpLo=lo; state.vpBucket=vpk; state.vpN=VR;
+  state.zones=zones;
 }
 
-/* ---------- COLOR ---------- */
-const STOPS=[
- [0.00,[10,14,26,0]],[0.12,[20,70,85,0.32]],[0.34,[26,135,140,0.6]],
- [0.56,[38,190,175,0.75]],[0.76,[130,215,110,0.88]],
- [0.90,[220,225,70,0.95]],[1.0,[255,245,140,1]]];
-function heat(t){
-  if(t<=0) return null;
-  for(let i=1;i<STOPS.length;i++){ if(t<=STOPS[i][0]){
-    const a=STOPS[i-1], b=STOPS[i], f=(t-a[0])/(b[0]-a[0]);
-    const c0=a[1],c1=b[1];
-    return `rgba(${(c0[0]+(c1[0]-c0[0])*f)|0},${(c0[1]+(c1[1]-c0[1])*f)|0},${(c0[2]+(c1[2]-c0[2])*f)|0},${c0[3]+(c1[3]-c0[3])*f})`;
-  }}
-  return "rgba(255,242,150,1)";
+/* ---- VRVP: volumen REAL sobre lo que se ve (velas + rango de precio visible) ---- */
+function computeVP(){
+  const R=state.vpRows, vp=new Float64Array(R);
+  const c=state.candles, N=c.length;
+  // el perfil se calcula sobre el RANGO DE PRECIO VISIBLE (para que el POC sea el de lo que ves)
+  const lo=state.viewLo, hi=state.viewHi, span=(hi-lo)||1, bk=span/R;
+  const i0=Math.max(0,Math.floor(state.x0)), i1=Math.min(N-1,Math.ceil(state.x1));
+  for(let i=i0;i<=i1;i++){
+    const k=c[i]; const kl=Math.max(k.l,lo), kh=Math.min(k.h,hi);   // recorta a lo visible
+    if(kh<kl) continue;                                             // vela fuera de la vista
+    if(kh<=kl){ const r=Math.floor((k.c-lo)/bk); if(r>=0&&r<R) vp[r]+=k.q; continue; }
+    const r0=Math.max(0,Math.floor((kl-lo)/bk));
+    const r1=Math.min(R-1,Math.floor((kh-lo)/bk));
+    const nr=(r1-r0+1)||1;
+    // reparte proporcional a la parte de la vela que cae en la vista
+    const frac=(kh-kl)/((k.h-k.l)||1), per=(k.q*Math.min(1,frac))/nr;
+    for(let r=r0;r<=r1;r++) vp[r]+=per;
+  }
+  let mx=0,poc=0; for(let r=0;r<R;r++){ if(vp[r]>mx){mx=vp[r];poc=r;} }
+  state.vp=vp; state.vpMax=mx||1; state.vpPoc=poc; state.vpBk=bk; state.vpLo=lo;
 }
 
-/* ---------- LAYOUT ---------- */
-function resizeCanvas(){
-  const dpr=Math.min(window.devicePixelRatio||1,2);
-  const w=cv.clientWidth, h=cv.clientHeight;
-  cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr);
+// tiempo que falta para que cierre la vela actual del TF
+function cuentaAtras(){
+  const c=state.candles; if(!c.length) return null;
+  const dur=CONFIG.tfMs[state.tf]; if(!dur) return null;
+  const cierre=c[c.length-1].t + dur;
+  let ms=cierre-Date.now(); if(ms<0) ms=0;
+  const h=Math.floor(ms/3600000), m=Math.floor(ms%3600000/60000), s=Math.floor(ms%60000/1000);
+  if(h>0) return h+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+  return m+":"+String(s).padStart(2,"0");
+}
+
+/* ---- PANEL DE OBJETIVOS: lo que el precio va a buscar, por prioridad ---- */
+function updateTargets(){
+  const box=$("#targets"); if(!box) return;
+  const zs=state.zones;
+  if(!zs || !zs.length || !state.livePrice){ box.innerHTML=""; return; }
+  const price=state.livePrice;
+  const ref=Math.max(...zs.map(z=>z.v))||1;
+  // prioridad = mucha liquidez + cerca del precio (+ respaldo de volumen real)
+  let scored=zs.map(z=>{
+    const dist=Math.abs(z.price-price)/price*100;
+    const fuerza=z.v/ref;
+    const cercania=1/(1+dist*0.65);
+    const bonus=z.confirmada?1.35:1;                    // las ✓vol pesan más
+    return {...z, dist:(z.price-price)/price*100, sc:fuerza*cercania*bonus};
+  }).filter(z=>Math.abs(z.dist)>0.05)
+    .sort((a,b)=>b.sc-a.sc)
+    .slice(0,8);
+  if(!scored.length){ box.innerHTML=""; return; }
+  const maxV=Math.max(...scored.map(z=>z.v));
+  let h=`<div class="tt">🎯 objetivos · lo que el precio busca</div>`;
+  h+=`<div class="cp">Precio actual: ${fmt(price)}</div>`;
+  scored.forEach((z,i)=>{
+    const up=z.price>price, isStar=(z.v===maxV);
+    h+=`<div class="row${i===0?' main':''}">`
+      +`<span class="rk">${isStar?"★":(i+1)}</span>`
+      +`<span class="ar ${up?'up':'dn'}">${up?'▲':'▼'}</span>`
+      +`<span class="pr">${fmt(z.price)}</span>`
+      +`<span class="am">${usd(z.v)}${z.confirmada?" ✓":""}</span>`
+      +`<span class="ds ${up?'up':'dn'}">${z.dist>=0?'+':''}${z.dist.toFixed(1)}%</span>`
+      +`</div>`;
+  });
+  box.innerHTML=h;
+}
+
+/* ---- RENDER ---- */
+function resize(){
+  const dpr=Math.min(devicePixelRatio||1,2);
+  cv.width=cv.clientWidth*dpr; cv.height=cv.clientHeight*dpr;
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  buffers.forEach((b,i)=>{ b.width=cv.width; b.height=cv.height; bctx[i].setTransform(dpr,0,0,dpr,0,0); });
+  buf.forEach((b,i)=>{b.width=cv.width;b.height=cv.height;bx[i].setTransform(dpr,0,0,dpr,0,0);});
 }
-function layout(){                       // SOLO calcula geometría, NO toca el tamaño (evita el negro)
-  const w=cv.clientWidth, h=cv.clientHeight;
-  const L={ w,h, top:12, bottom:h-26,
-    heatL:8, heatR:Math.round(w*0.63),
-    axisX:Math.round(w*0.63)+2,
-    profL:Math.round(w*0.71), profR:w-8 };
-  L.plotH=L.bottom-L.top; L.heatW=L.heatR-L.heatL; L.profW=L.profR-L.profL;
+function layout(){
+  const w=cv.clientWidth,h=cv.clientHeight;
+  const L={w,h,top:14,bottom:h-26,left:10};
+  L.right = Math.round(w*0.80);          // heatmap + velas
+  L.axisX = L.right+2;
+  L.profL = Math.round(w*0.86);          // panel derecho: liquidez
+  L.profR = w-10;
+  L.plotH=L.bottom-L.top; L.plotW=L.right-L.left; L.profW=L.profR-L.profL;
   state.layout=L; return L;
 }
-const priceToY=(p)=>{ const L=state.layout;
-  return L.top + (1-(p-state.viewLo)/(state.viewHi-state.viewLo))*L.plotH; };
-const yToPrice=(y)=>{ const L=state.layout;
-  return state.viewLo + (1-(y-L.top)/L.plotH)*(state.viewHi-state.viewLo); };
+const yOf=p=>{const L=state.layout;return L.top+(1-(p-state.viewLo)/(state.viewHi-state.viewLo))*L.plotH;};
+const pOf=y=>{const L=state.layout;return state.viewLo+(1-(y-L.top)/L.plotH)*(state.viewHi-state.viewLo);};
 
-/* ---------- CAPA ESTÁTICA (heatmap + ejes + perfil) ---------- */
-function buildStatic(){
-  const L=layout(); if(!state.grid) return;
-  if(state.showVP) computeVP();               // VRVP: se recalcula con el zoom
-  const bi=curBuf^1, o=bctx[bi];              // dibuja en el buffer oculto
-  o.fillStyle="#0a0e17"; o.fillRect(0,0,L.w,L.h);
-
-  // --- heatmap ---
-  const g=state.grid, N=g.length, ROWS=CONFIG.rows;
-  const ch=L.plotH/ROWS;
-  const x0=state.x0, x1=state.x1, cwPx=L.heatW/((x1-x0+1)||1);
-  const colToX=i=>L.heatL+(i-x0)*cwPx;
-  const i0=Math.max(0,Math.floor(x0)), i1=Math.min(N-1,Math.ceil(x1));
-  o.save(); o.beginPath(); o.rect(L.heatL,L.top,L.heatW,L.plotH); o.clip();
-  for(let r=0;r<ROWS;r++){
-    const yT=priceToY(state.binLo+(r+1)*state.bucket);
-    const yB=priceToY(state.binLo+r*state.bucket);
-    if(yB<L.top || yT>L.bottom) continue;
-    const hh=(yB-yT)+0.6;
-    for(let i=i0;i<=i1;i++){ const v=g[i][r]; if(v<=0)continue;
-      const t=Math.pow(Math.min(v/state.gridMax,1),CONFIG.gamma); const col=heat(t); if(!col)continue;
-      o.fillStyle=col; o.fillRect(colToX(i), yT, cwPx+0.6, hh);
-    }
-  }
-  o.restore();
-
-  o.restore();
-
-  // --- velas japonesas sobre el heatmap (price action) ---
-  if(state.showCandles){
-    o.save(); o.beginPath(); o.rect(L.heatL,L.top,L.heatW,L.plotH); o.clip();
-    const bw=Math.max(cwPx*0.6,1);
-    for(let i=i0;i<=i1;i++){ if(i===N-1)continue; const k=state.candles[i]; if(!k)continue;
-      const xc=colToX(i)+cwPx/2;
-      const yH=priceToY(k.high), yL=priceToY(k.low), yO=priceToY(k.open), yC=priceToY(k.close);
-      const up=k.close>=k.open;
-      // mecha con contorno oscuro
-      o.strokeStyle="rgba(0,0,0,.6)"; o.lineWidth=Math.min(bw,3);
-      o.beginPath(); o.moveTo(xc,yH); o.lineTo(xc,yL); o.stroke();
-      o.strokeStyle=up?"#b0ffd8":"#ffc4d0"; o.lineWidth=1;
-      o.beginPath(); o.moveTo(xc,yH); o.lineTo(xc,yL); o.stroke();
-      const bt=Math.min(yO,yC), bh=Math.max(Math.abs(yC-yO),1);
-      o.fillStyle=up?"#23dc7d":"#ff465f";
-      o.fillRect(xc-bw/2, bt, bw, bh);
-      o.strokeStyle="rgba(0,0,0,.7)"; o.lineWidth=0.8; o.strokeRect(xc-bw/2, bt, bw, bh);
-    }
-    o.restore();
-  }
-
-  // --- PERFIL DE VOLUMEN REAL (filas propias, a la izquierda + POC) ---
-  if(state.showVP && state.vp){
-    o.save(); o.beginPath(); o.rect(L.heatL,L.top,L.heatW,L.plotH); o.clip();
-    const VR=state.vpN, vpW=L.heatW*state.vpWidth;
-    const rh0=L.plotH*state.vpBucket/(state.viewHi-state.viewLo);   // alto de cada fila en px
-    for(let r=0;r<VR;r++){ const v=state.vp[r]; if(v<=0)continue;
-      const p=state.vpLo+(r+0.5)*state.vpBucket, y=priceToY(p);
-      if(y<L.top-2||y>L.bottom+2)continue;
-      const len=(v/state.vpMax)*vpW, bh=Math.max(rh0*state.vpThick,0.8);
-      o.fillStyle= r===state.vpPoc? "rgba(255,120,220,.75)":"rgba(205,216,240,.4)";
-      o.fillRect(L.heatL, y-bh/2, len, bh);
-    }
-    // línea POC (precio con más volumen real negociado)
-    const pocP=state.vpLo+(state.vpPoc+0.5)*state.vpBucket, py=priceToY(pocP);
-    if(py>=L.top&&py<=L.bottom){
-      o.strokeStyle="rgba(255,120,220,.85)"; o.lineWidth=1.4; o.setLineDash([6,4]);
-      o.beginPath(); o.moveTo(L.heatL,py); o.lineTo(L.heatR,py); o.stroke(); o.setLineDash([]);
-      o.font="bold 10px Segoe UI"; o.textBaseline="middle"; o.textAlign="left";
-      const txt="POC "+fmt(pocP), tw=o.measureText(txt).width;
-      o.fillStyle="rgba(45,10,40,.9)"; o.fillRect(L.heatL+vpW+4, py-8, tw+8, 16);
-      o.fillStyle="#ff9fe0"; o.fillText(txt, L.heatL+vpW+8, py+0.5);
-    }
-    o.restore();
-  }
-
-  // --- zonas de TEMPORALIDAD MAYOR (violeta) superpuestas ---
-  if(state.showHTF && state.htfZones && state.htfZones.length){
-    o.textBaseline="middle"; o.font="bold 10px Segoe UI"; o.textAlign="left";
-    const hlab=state.htfTf||"", hx=L.heatL+Math.round(L.heatW*0.34); let hpl=[];
-    state.htfZones.slice(0,4).forEach(z=>{
-      const y=priceToY(z.price); if(y<L.top+2||y>L.bottom-2) return;
-      if(hpl.some(py=>Math.abs(py-y)<14)) return; hpl.push(y);
-      o.strokeStyle="rgba(180,130,255,.7)"; o.lineWidth=1.4; o.setLineDash([8,5]);
-      o.beginPath(); o.moveTo(L.heatL,y); o.lineTo(L.heatR,y); o.stroke(); o.setLineDash([]);
-      const txt=hlab+" · "+fmt(z.price);
-      const tw=o.measureText(txt).width;
-      o.fillStyle="rgba(35,18,60,.92)"; o.fillRect(hx, y-8, tw+10, 16);
-      o.fillStyle="#c9a8ff"; o.fillText(txt, hx+5, y+0.5);
-    });
-  }
-
-  // --- líneas de zonas con el COLOR DE SU NIVEL (Clave/Alta/Media/Baja) ---
-  o.textBaseline="middle"; o.font="bold 10.5px Segoe UI";
-  const hPlaced=[]; let hc=0;
-  state.topZones.forEach((z,i)=>{
-    if(hc>=12) return;
-    const y=priceToY(z.price); if(y<L.top+2||y>L.bottom-2) return;
-    const crowded = hPlaced.some(py=>Math.abs(py-y)<11);   // solo oculta el texto
-    hPlaced.push(y); hc++;
-    const tt=tierOf(z.v), col=tt.color;
-    const isTop=(i===0);
-    o.strokeStyle=col; o.globalAlpha=isTop?0.9:0.45;
-    o.lineWidth=isTop?1.8:1; o.setLineDash(isTop?[]:[3,3]);
-    o.beginPath(); o.moveTo(L.heatL,y); o.lineTo(L.heatR,y); o.stroke();
-    o.setLineDash([]); o.globalAlpha=1;
-    // punto del nivel siempre; etiqueta solo si hay hueco
-    o.fillStyle=col; o.beginPath(); o.arc(L.heatL+7,y,isTop?4.5:3.5,0,7); o.fill();
-    if(crowded) return;
-    const txt=(isTop?"★ ":"")+usdFmt(z.v);
-    const tw=o.measureText(txt).width;
-    o.fillStyle="rgba(4,8,15,.9)"; o.fillRect(L.heatL+14,y-8,tw+8,16);
-    o.fillStyle=col; o.textAlign="left";
-    o.fillText(txt, L.heatL+18, y+0.5);
-  });
-
-  // --- eje de precio ---
-  o.font="11px Segoe UI"; o.textBaseline="middle";
-  o.strokeStyle="rgba(255,255,255,.05)"; o.lineWidth=1;
-  const steps=8;
-  for(let s=0;s<=steps;s++){
-    const p=state.viewLo+(state.viewHi-state.viewLo)*s/steps; const y=priceToY(p);
-    o.beginPath(); o.moveTo(L.heatL,y); o.lineTo(L.heatR,y); o.stroke();
-    o.fillStyle="#8393ab"; o.textAlign="left"; o.fillText(fmt(p), L.axisX+4, y);
-  }
-
-  // --- eje de tiempo ---
-  o.fillStyle="#6b7a92"; o.textAlign="center"; o.textBaseline="top";
-  const c=state.candles; const tsteps=5;
-  for(let s=0;s<=tsteps;s++){ const idx=Math.max(0,Math.min(N-1,Math.round(x0+(x1-x0)*s/tsteps)));
-    const x=colToX(idx); const d=new Date(c[idx].t);
-    const lab=(state.tf==="1d")? `${d.getDate()}/${d.getMonth()+1}`
-             : `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
-    o.fillText(lab, Math.min(Math.max(x,L.heatL+14),L.heatR-14), L.bottom+5);
-  }
-
-  // --- panel perfil (LIQUIDEZ AHORA) estilo Coinglass ---
-  o.fillStyle="#080c14"; o.fillRect(L.profL-2,L.top-2,L.profW+4,L.plotH+4);
-  o.save(); o.beginPath(); o.rect(L.profL-2,L.top,L.profW+6,L.plotH); o.clip();
-  const prof=state.profile; let pmax=0; for(const v of prof) if(v>pmax)pmax=v; if(pmax<=0)pmax=1;
-  const price=state.livePrice||c[N-1].close;
-  const barW=L.profW*0.62, labelX=L.profL+L.profW*0.64;
-  const rowH=Math.max(L.plotH*state.bucket/(state.viewHi-state.viewLo),0.8);
-  const barLen=v=>Math.sqrt(Math.min(v/pmax,1))*barW;   // raíz -> zonas pequeñas más visibles
-
-  // barras por nivel: cyan arriba / rojo abajo del precio
-  for(let r=0;r<ROWS;r++){ const v=prof[r]; if(v<=0)continue;
-    const p=state.binLo+(r+0.5)*state.bucket, above=p>price;
-    const y=priceToY(p); if(y<L.top-2||y>L.bottom+2)continue;
-    const len=barLen(v);
-    o.fillStyle= above? "rgba(45,195,205,.6)" : "rgba(235,65,85,.55)";
-    o.fillRect(L.profL, y-rowH/2, len, Math.max(rowH*0.85,0.8));
-  }
-
-  // curva acumulada desde el precio hacia fuera (verde arriba / rojo abajo)
-  const pRow=Math.max(0,Math.min(ROWS-1,Math.floor((price-state.binLo)/state.bucket)));
-  const aC=[],bC=[]; let cu=0,mC=1;
-  for(let r=pRow;r<ROWS;r++){ cu+=prof[r]; aC.push([r,cu]); if(cu>mC)mC=cu; }
-  cu=0; for(let r=pRow;r>=0;r--){ cu+=prof[r]; bC.push([r,cu]); if(cu>mC)mC=cu; }
-  o.lineWidth=1.6;
-  o.strokeStyle="rgba(60,225,140,.85)"; o.beginPath();
-  aC.forEach((q,i)=>{ const x=L.profL+(q[1]/mC)*barW, y=priceToY(state.binLo+(q[0]+0.5)*state.bucket); i?o.lineTo(x,y):o.moveTo(x,y); }); o.stroke();
-  o.strokeStyle="rgba(255,70,90,.85)"; o.beginPath();
-  bC.forEach((q,i)=>{ const x=L.profL+(q[1]/mC)*barW, y=priceToY(state.binLo+(q[0]+0.5)*state.bucket); i?o.lineTo(x,y):o.moveTo(x,y); }); o.stroke();
-
-  // etiquetas de zonas PRINCIPALES: color según su nivel (Clave/Alta/Media/Baja)
-  o.font="bold 9px Segoe UI"; o.textBaseline="middle"; o.textAlign="left";
-  const placed=[], minGap=13; let count=0;
-  state.topZones.forEach((z,idx)=>{
-    if(count>=12) return;
-    const y=priceToY(z.price); if(y<L.top+2||y>L.bottom-2) return;
-    const crowded = placed.some(py=>Math.abs(py-y)<minGap);
-    placed.push(y); count++;
-    const isTop=idx===0, len=Math.max(barLen(z.v),5);
-    const col=tierOf(z.v).color;
-    o.fillStyle=col;
-    o.fillRect(L.profL, y-rowH/2, len, Math.max(rowH,2.5));
-    if(crowded) return;                             // barra sí, etiqueta no
-    const txt=(isTop?"★ ":"")+fmt(z.price)+" "+usdFmt(z.v);
-    const tw=o.measureText(txt).width;
-    o.fillStyle="rgba(4,8,15,.88)"; o.fillRect(labelX-2, y-7, tw+5, 14);
-    o.fillStyle=col;
-    o.fillText(txt, labelX, y+0.5);
-  });
-  o.restore();
-
-  o.fillStyle="#8393ab"; o.font="10px Segoe UI"; o.textAlign="left"; o.textBaseline="top";
-  o.fillText("ZONAS DE LIQUIDEZ ("+(state.weightMode==="oi"?"OI total":state.weightMode==="oidelta"?"OI Δ":"Volumen")+")", L.profL, L.top-0.5);
-
-  // --- leyenda de color ---
-  const lgX=L.heatL+8, lgY=L.top+8, lgW=150, lgH=9;
-  o.fillStyle="rgba(6,9,16,.82)"; o.fillRect(lgX-6,lgY-6,lgW+90,lgH+22);
-  for(let i=0;i<lgW;i++){ const tt=i/lgW; const cc=heat(Math.pow(tt,CONFIG.gamma));
-    o.fillStyle=cc||"rgba(10,15,28,1)"; o.fillRect(lgX+i,lgY,1.4,lgH); }
-  o.strokeStyle="rgba(255,255,255,.15)"; o.lineWidth=1; o.strokeRect(lgX,lgY,lgW,lgH);
-  o.fillStyle="#8393ab"; o.font="10px Segoe UI"; o.textBaseline="middle"; o.textAlign="left";
-  o.fillText("poca", lgX, lgY+lgH+9);
-  o.fillText("mucha liquidez (imán)", lgX+lgW+8, lgY+lgH/2);
-
-  state.staticCanvas=buffers[bi]; curBuf=bi;   // swap solo al terminar: nunca se ve a medias
+// paleta simple y clara
+function heat(t){
+  if(t<=0.02) return null;
+  const S=[[0.02,[16,24,40,0]],[0.25,[26,90,104,.45]],[0.5,[42,181,165,.7]],
+           [0.75,[143,212,110,.85]],[1,[255,225,90,1]]];
+  for(let i=1;i<S.length;i++){ if(t<=S[i][0]){
+    const a=S[i-1],b=S[i],f=(t-a[0])/(b[0]-a[0]),c0=a[1],c1=b[1];
+    return `rgba(${c0[0]+(c1[0]-c0[0])*f|0},${c0[1]+(c1[1]-c0[1])*f|0},${c0[2]+(c1[2]-c0[2])*f|0},${c0[3]+(c1[3]-c0[3])*f})`;
+  }} return "rgba(255,235,120,1)";
 }
 
-/* ---------- FRAME (dinámico: precio vivo + burbujas) ---------- */
+function render(){
+  if(!state.grid) return;
+  const L=layout(), bi=cur^1, o=bx[bi];
+  o.fillStyle="#0a0e17"; o.fillRect(0,0,L.w,L.h);
+  const N=state.grid.length, R=CONFIG.rows;
+  const x0=state.x0, x1=state.x1, cw=L.plotW/((x1-x0+1)||1);
+  const xAt=i=>L.left+(i-x0)*cw;
+  const i0=Math.max(0,Math.floor(x0)), i1=Math.min(N-1,Math.ceil(x1));
+
+  // heatmap (solo la parte visible) — se puede ocultar con el botón 🌡 Fondo
+  if(state.showHeatmap){
+  o.save(); o.beginPath(); o.rect(L.left,L.top,L.plotW,L.plotH); o.clip();
+  for(let r=0;r<R;r++){
+    const yT=yOf(state.lo+(r+1)*state.bucket), yB=yOf(state.lo+r*state.bucket);
+    if(yB<L.top||yT>L.bottom) continue;
+    for(let i=i0;i<=i1;i++){ const v=state.grid[i][r]; if(v<=0)continue;
+      const col=heat(Math.pow(v/state.gridMax,CONFIG.gamma)); if(!col)continue;
+      o.fillStyle=col; o.fillRect(xAt(i), yT, cw+0.6, (yB-yT)+0.6); }
+  }
+  o.restore();
+  }
+
+  // ---- VRVP SUPERPUESTO (volumen real, sombreado desde la izquierda) ----
+  if(state.showVP){
+    computeVP();
+    o.save(); o.beginPath(); o.rect(L.left,L.top,L.plotW,L.plotH); o.clip();
+    const vp=state.vp, vmax=state.vpMax, R2=state.vpRows, bk=state.vpBk, vlo=state.vpLo;
+    const maxW=L.plotW*0.32;                 // ancho máx del perfil (32% del gráfico)
+    for(let r=0;r<R2;r++){ const v=vp[r]; if(v<=0)continue;
+      const p=vlo+(r+0.5)*bk, y=yOf(p);
+      if(y<L.top-1||y>L.bottom+1)continue;
+      const rh=Math.max(L.plotH*bk/(state.viewHi-state.viewLo),0.6);
+      const len=(v/vmax)*maxW;
+      // color sobrio (azul apagado, poca opacidad) para NO tapar las etiquetas de la izquierda
+      const t=v/vmax;
+      o.fillStyle= r===state.vpPoc? "rgba(255,180,40,.7)"
+        : `rgba(58,${Math.round(96+t*54)},${Math.round(140+t*45)},${0.16+t*0.22})`;
+      o.fillRect(L.left, y-rh/2, len, Math.max(rh,0.7));
+    }
+    o.restore();
+    // línea POC (punteada corta, bien visible)
+    const pocP=vlo+(state.vpPoc+0.5)*bk, pocY=yOf(pocP);
+    if(pocY>=L.top&&pocY<=L.bottom){
+      o.strokeStyle="#ffb428"; o.lineWidth=2; o.setLineDash([8,6]);
+      o.beginPath(); o.moveTo(L.left,pocY); o.lineTo(L.right,pocY); o.stroke(); o.setLineDash([]);
+      // etiqueta POC a la DERECHA (sobre el eje de precio)
+      o.font="bold 11px Segoe UI"; const txt="POC "+fmt(pocP);
+      const tw=o.measureText(txt).width;
+      o.fillStyle="#ffb428"; o.fillRect(L.axisX+2, pocY-11, tw+12, 22);
+      o.fillStyle="#1a0f00"; o.textAlign="left"; o.textBaseline="middle";
+      o.fillText(txt, L.axisX+8, pocY);
+    }
+  }
+
+  // velas
+  if(state.showCandles){
+    o.save(); o.beginPath(); o.rect(L.left,L.top,L.plotW,L.plotH); o.clip();
+    const bw=Math.max(cw*0.62,1);
+    for(let i=i0;i<=i1;i++){ const k=state.candles[i]; if(!k)continue;
+      const x=xAt(i)+cw/2;
+      const up=k.c>=k.o, yH=yOf(k.h), yL=yOf(k.l), yO=yOf(k.o), yC=yOf(k.c);
+      o.strokeStyle="rgba(0,0,0,.75)"; o.lineWidth=Math.min(bw,3);
+      o.beginPath(); o.moveTo(x,yH); o.lineTo(x,yL); o.stroke();
+      o.strokeStyle=up?"#7dffc4":"#ffb3c0"; o.lineWidth=1;
+      o.beginPath(); o.moveTo(x,yH); o.lineTo(x,yL); o.stroke();
+      const bt=Math.min(yO,yC), bh=Math.max(Math.abs(yC-yO),1.2);
+      o.fillStyle=up?"#12d97a":"#ff3b57"; o.fillRect(x-bw/2,bt,bw,bh);
+      if(bw>2.2){ o.strokeStyle="rgba(0,0,0,.8)"; o.lineWidth=0.9; o.strokeRect(x-bw/2,bt,bw,bh); }
+    }
+    o.restore();
+  }
+
+  // ---- ZONAS DE CALOR INSTITUCIONALES (liquidez agrupada: short arriba / long abajo) ----
+  if(state.showHeat && state.heatZones && state.heatZones.length){
+    const maxCalor=Math.max(...state.heatZones.map(z=>z.calor));
+    o.textBaseline="middle";
+    for(const z of state.heatZones){
+      const y=yOf(z.price); if(y<L.top+8||y>L.bottom-8) continue;
+      const t=z.calor/maxCalor;                          // intensidad 0..1
+      const banda=Math.max(6, t*22);                     // grosor de la banda según calor
+      const short=z.lado==="short";
+      // banda de calor con degradado (rojo=short/resistencia, verde=long/soporte)
+      const r=short?255:18, g=short?59:217, b=short?87:124;
+      o.fillStyle=`rgba(${r},${g},${b},${0.10+t*0.28})`;
+      o.fillRect(L.left, y-banda/2, L.plotW, banda);
+      // línea central más intensa
+      o.strokeStyle=`rgba(${r},${g},${b},${0.5+t*0.5})`;
+      o.lineWidth=1+t*2.5; o.setLineDash([]);
+      o.beginPath(); o.moveTo(L.left,y); o.lineTo(L.right,y); o.stroke();
+      // etiqueta de CALOR (a la izquierda-centro, con el nº de señales destacado)
+      const lab="🔥"+(short?"SHORT":"LONG")+" "+fmt(z.price);
+      o.font="bold 10px Segoe UI"; const tw=o.measureText(lab).width;
+      const bx=L.left+L.plotW*0.30;                    // posición: 30% desde la izquierda
+      o.fillStyle=`rgb(${r},${g},${b})`; o.fillRect(bx, y-9, tw+34, 18);
+      o.fillStyle="#0a0e17"; o.textAlign="left"; o.textBaseline="middle";
+      o.fillText(lab, bx+5, y);
+      // el nº de señales en un círculo destacado al final
+      o.fillStyle="rgba(10,14,23,.9)"; o.beginPath(); o.arc(bx+tw+18, y, 9, 0, 7); o.fill();
+      o.strokeStyle=`rgb(${r},${g},${b})`; o.lineWidth=1.5; o.stroke();
+      o.fillStyle=`rgb(${r},${g},${b})`; o.font="bold 12px Segoe UI"; o.textAlign="center";
+      o.fillText(String(z.fuentes), bx+tw+18, y); o.textAlign="left";
+    }
+  }
+
+  // ---- ZONAS DE REACCIÓN PROBADA (donde el precio rechazó fuerte antes) ----
+  if(state.showReact && state.reactZones && state.reactZones.length){
+    o.textBaseline="middle";
+    for(const z of state.reactZones){
+      const y=yOf(z.price); if(y<L.top+6||y>L.bottom-6) continue;
+      const col = z.side==="high" ? "#e879f9" : "#22d3ee";   // rosa=techo probado, cyan=suelo probado
+      o.strokeStyle=col; o.globalAlpha=0.8; o.lineWidth=z.toques>1?2:1.3;
+      o.setLineDash([2,3]);
+      o.beginPath(); o.moveTo(L.left,y); o.lineTo(L.right,y); o.stroke();
+      o.setLineDash([]); o.globalAlpha=1;
+      // etiqueta: precio + nº de veces que rechazó
+      const txt=fmt(z.price)+(z.toques>1?"  ×"+z.toques:"")+" ⟲";
+      o.font="bold 9px Segoe UI"; const tw=o.measureText(txt).width;
+      o.fillStyle=col; o.fillRect(L.left+4, y-7, tw+8, 14);
+      o.fillStyle="#0a0e17"; o.textAlign="left"; o.fillText(txt, L.left+8, y);
+    }
+  }
+
+  // ---- ZONAS DE LIQUIDEZ REAL DEL LIBRO (liquidez acumulada por nivel) ----
+  // los muros se ven en TF cortos y medios; solo en 1d se ocultan (rango demasiado amplio)
+  const bookTfOk = state.tf!=="1d";
+  if(state.showBook && bookTfOk && state.bookWalls && state.bookWalls.length){
+    const maxUsd=Math.max(...state.bookWalls.map(w=>w.usd));
+    // ⭐ solo para la MAYOR liquidez de cada lado (1 short arriba + 1 long abajo)
+    let starBid=null, starAsk=null;
+    for(const w of state.bookWalls){
+      if(w.side==="bid" && (!starBid || w.usd>starBid.usd)) starBid=w;
+      if(w.side==="ask" && (!starAsk || w.usd>starAsk.usd)) starAsk=w;
+    }
+    o.textBaseline="middle";
+    for(const w of state.bookWalls){
+      const y=yOf(w.price); if(y<L.top+6||y>L.bottom-6) continue;
+      const fuerte=w.usd>=maxUsd*0.6;
+      const gigante = (w===starBid || w===starAsk);   // la mayor de su lado
+      const col = w.side==="bid" ? "#12d97a" : "#ff3b57";
+      o.strokeStyle=col; o.globalAlpha=(fuerte||gigante)?0.95:0.55;
+      o.lineWidth=gigante?3.2:(fuerte?2.6:1.4); o.setLineDash([]);
+      o.beginPath(); o.moveTo(L.left,y); o.lineTo(L.right,y); o.stroke();
+      o.globalAlpha=1;
+      const icono = gigante? "⭐🐋" : "🐋";
+      const txt=icono+" "+fmt(w.price)+"  "+usd(w.usd)+"  ("+w.ordenes+" órd)";
+      o.font="bold 9.5px Segoe UI"; const tw=o.measureText(txt).width;
+      o.fillStyle=col; o.fillRect(L.left+4, y-8, tw+10, 16);
+      o.fillStyle="#0a0e17"; o.textAlign="left"; o.fillText(txt, L.left+9, y);
+    }
+  } else if(state.showBook && bookTfOk && state.bookErr){
+    // estado del libro: naranja si es error de red, gris si solo no hay muros
+    const esError = state.bookErr.includes("conexión")||state.bookErr.includes("HTTP");
+    o.fillStyle=esError? "rgba(255,120,50,.95)":"rgba(125,140,165,.85)";
+    o.font="bold 10px Segoe UI"; o.textAlign="left"; o.textBaseline="top";
+    o.fillText("🐋 "+state.bookErr, L.left+8, L.top+4);
+  }
+
+  // ZONAS MACRO (temporalidad mayor, ej. 4h): líneas violeta punteadas
+  if(state.showHTF && state.htfZones && state.htfZones.length){
+    o.setLineDash([6,4]); o.lineWidth=1.2; o.textBaseline="middle";
+    for(const z of state.htfZones){
+      const y=yOf(z.price); if(y<L.top+6||y>L.bottom-6) continue;
+      o.strokeStyle="rgba(168,85,247,.7)";
+      o.beginPath(); o.moveTo(L.left,y); o.lineTo(L.right,y); o.stroke();
+      // etiqueta violeta a la izquierda
+      const txt=(state.htfTf||"4h")+" · "+fmt(z.price);
+      o.font="bold 9px Segoe UI"; const tw=o.measureText(txt).width;
+      o.fillStyle="rgba(60,25,90,.92)"; o.fillRect(L.left+4, y-8, tw+8, 15);
+      o.fillStyle="#d8b4fe"; o.textAlign="left"; o.fillText(txt, L.left+8, y);
+    }
+    o.setLineDash([]);
+  }
+
+  // ZONAS: línea clara + etiqueta, color según FUERZA (imán = más fuerte)
+  const used=[];
+  if(state.showZones){
+  o.textBaseline="middle";
+  const zmax=state.zones.length? state.zones[0].v : 1;
+  // color por fuerza: rojo=clave, naranja=alta, amarillo=media
+  const zoneColor=v=>{ const r=v/zmax;
+    return r>=0.75? "#ff5b6e" : r>=0.5? "#ff9c2e" : "#ffe15a"; };
+  // --- CONFLUENCIA: según el modo elegido (las 3, 2 de 3, zona+POC, zona+4h) ---
+  const pocPrice = state.vp? (state.vpLo+(state.vpPoc+0.5)*state.vpBk) : null;
+  const tolC = 0.004;   // tolerancia 0.4% para considerar "mismo nivel"
+  const esConfluencia=z=>{
+    const M=state.confMode;
+    if(M==="off") return false;
+    const cercaPOC = pocPrice!=null && Math.abs(z.price-pocPrice)/z.price <= tolC;
+    const cercaMacro = state.showHTF && state.htfZones &&
+      state.htfZones.some(h=>Math.abs(z.price-h.price)/z.price <= tolC);
+    if(M==="poc")   return cercaPOC;                    // zona + POC
+    if(M==="macro") return cercaMacro;                  // zona + 4h
+    if(M==="2")     return cercaPOC || cercaMacro;      // 2 de 3 (la zona ya cuenta)
+    return cercaPOC && cercaMacro;                      // "3": las tres
+  };
+  state.zones.forEach((z,i)=>{
+    const y=yOf(z.price); if(y<L.top+8||y>L.bottom-8) return;
+    const crowded=used.some(u=>Math.abs(u-y)<20);
+    used.push(y);
+    const col=zoneColor(z.v), r=z.v/zmax, strong=r>=0.75;
+    const conf=esConfluencia(z);
+    // marco brillante si es confluencia (zona + POC + macro)
+    if(conf){
+      o.strokeStyle="#00e5ff"; o.globalAlpha=1; o.lineWidth=3; o.setLineDash([]);
+      o.shadowColor="#00e5ff"; o.shadowBlur=12;
+      o.beginPath(); o.moveTo(L.left,y); o.lineTo(L.right,y); o.stroke();
+      o.shadowBlur=0;
+    }
+    // línea sólida y más gruesa cuanto más fuerte la zona
+    o.strokeStyle=col; o.globalAlpha=strong?0.95:0.7;
+    o.lineWidth= strong?2.2 : r>=0.5?1.6:1.1; o.setLineDash([]);
+    o.beginPath(); o.moveTo(L.left,y); o.lineTo(L.right,y); o.stroke();
+    o.globalAlpha=1;
+    if(crowded) return;
+    // etiqueta con el color de la zona + número de prioridad
+    const w=104, hh=23;
+    // marco brillante alrededor de la etiqueta si es confluencia
+    if(conf){ o.strokeStyle="#00e5ff"; o.lineWidth=2; o.shadowColor="#00e5ff"; o.shadowBlur=8;
+      o.strokeRect(L.axisX, y-hh/2-1, w+4, hh+2); o.shadowBlur=0; }
+    o.fillStyle=col; o.fillRect(L.axisX+2, y-hh/2, w, hh);
+    o.textAlign="left";
+    // círculo de prioridad
+    if(z.rank){
+      o.fillStyle="rgba(10,14,23,.85)"; o.beginPath(); o.arc(L.axisX+13, y, 8, 0, 7); o.fill();
+      o.fillStyle=col; o.font="bold 11px Segoe UI"; o.textAlign="center"; o.textBaseline="middle";
+      o.fillText(z.rank, L.axisX+13, y); o.textAlign="left";
+    }
+    o.fillStyle="#0a0e17"; o.font="bold 12px Segoe UI"; o.textBaseline="middle";
+    o.fillText(fmt(z.price), L.axisX+26, y-5);
+    o.fillStyle="rgba(10,14,23,.78)"; o.font="bold 9.5px Segoe UI";
+    // ✓ si el volumen real confirma la zona (dato duro respaldando lo estimado)
+    o.fillText(usd(z.v)+(z.confirmada?"  ✓vol":""), L.axisX+26, y+7);
+    // etiqueta "CONFLUENCIA" encima (indica de qué tipo)
+    if(conf){ const M=state.confMode;
+      const txtC = M==="3"? "★ CONFLUENCIA · POC+4h"
+                 : M==="poc"? "★ ZONA + POC"
+                 : M==="macro"? "★ ZONA + 4h" : "★ CONFLUENCIA";
+      o.fillStyle="#00e5ff"; o.font="bold 8px Segoe UI"; o.textAlign="left";
+      o.fillText(txtC, L.axisX+2, y-hh/2-7); }
+  });
+  }
+
+  // eje de precio
+  o.font="10px Segoe UI"; o.textAlign="left"; o.fillStyle="#5a6b82";
+  o.strokeStyle="rgba(255,255,255,.04)"; o.lineWidth=1;
+  for(let s=0;s<=6;s++){ const p=state.viewLo+(state.viewHi-state.viewLo)*s/6, y=yOf(p);
+    if(used.some(u=>Math.abs(u-y)<16)) continue;
+    o.beginPath(); o.moveTo(L.left,y); o.lineTo(L.right,y); o.stroke();
+    o.fillText(fmt(p), L.axisX+7, y); }
+
+  // eje de tiempo
+  o.textAlign="center"; o.textBaseline="top"; o.fillStyle="#4d5b70";
+  for(let s=0;s<=5;s++){ const i=Math.round(x0+(x1-x0)*s/5), k=state.candles[Math.max(0,Math.min(N-1,i))];
+    const d=new Date(k.t);
+    const lab=(state.tf==="3d"||state.tf==="1w")?`${d.getDate()}/${d.getMonth()+1}`
+      :`${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    o.fillText(lab, Math.min(Math.max(xAt(i),L.left+16),L.right-16), L.bottom+5); }
+
+  // ===== DERECHA: LIQUIDEZ estimada (perfil real) =====
+  const price=state.livePrice||state.candles[N-1].c;
+  const rowH=Math.max(L.plotH*state.bucket/(state.viewHi-state.viewLo),0.8);
+  o.fillStyle="#080c14"; o.fillRect(L.profL-4,L.top-2,L.profW+8,L.plotH+4);
+  o.save(); o.beginPath(); o.rect(L.profL-4,L.top,L.profW+8,L.plotH); o.clip();
+  const prof=state.profile; let pmax=0; for(const v of prof) if(v>pmax)pmax=v; if(pmax<=0)pmax=1;
+  const bw2=L.profW*0.86;
+  for(let r=0;r<CONFIG.rows;r++){ const v=prof[r]; if(v<=0)continue;
+    const p=state.lo+(r+0.5)*state.bucket, y=yOf(p);
+    if(y<L.top-2||y>L.bottom+2)continue;
+    const len=(v/pmax)*bw2;
+    const above=p>price;
+    o.fillStyle= above? "rgba(45,195,205,.5)":"rgba(235,65,85,.45)";
+    o.fillRect(L.profL, y-rowH/2, len, Math.max(rowH*0.88,0.8));
+  }
+  // zonas principales resaltadas
+  state.zones.forEach((z,i)=>{
+    const y=yOf(z.price); if(y<L.top||y>L.bottom)return;
+    const len=Math.max((z.v/pmax)*bw2,4);
+    o.fillStyle= i===0? "#ffb428":"rgba(255,225,120,.9)";
+    o.fillRect(L.profL, y-rowH/2, len, Math.max(rowH,2.5));
+  });
+  o.restore();
+  o.fillStyle="#5a6b82"; o.font="9.5px Segoe UI"; o.textAlign="left"; o.textBaseline="top";
+  o.fillText("LIQUIDEZ", L.profL, L.top-0.5);
+
+  updateTargets();
+  staticCv=buf[bi]; cur=bi;
+}
+
 function frame(){
+  if(!staticCv){ ctx.fillStyle="#0a0e17"; ctx.fillRect(0,0,cv.clientWidth,cv.clientHeight);
+    ctx.fillStyle="#5a6b82"; ctx.font="12px Segoe UI"; ctx.textAlign="center";
+    ctx.fillText("cargando…",cv.clientWidth/2,cv.clientHeight/2); ctx.textAlign="left";
+    requestAnimationFrame(frame); return; }
   const L=state.layout;
-  if(L && state.staticCanvas){
-    ctx.drawImage(state.staticCanvas,0,0,cv.width,cv.height,0,0,L.w,L.h);
-    const now=performance.now();
+  ctx.drawImage(staticCv,0,0,cv.width,cv.height,0,0,L.w,L.h);
 
-    // vela ACTUAL en vivo: se dibuja aquí (dinámico) para que siga EXACTO al precio
-    if(state.showCandles && state.candles.length && state.livePrice && state.x0!=null){
-      const N=state.candles.length, k=state.candles[N-1], lp=state.livePrice;
-      const cwPx=L.heatW/((state.x1-state.x0+1)||1);
-      const xc=L.heatL+((N-1)-state.x0)*cwPx + cwPx/2;
-      if(xc>=L.heatL-2 && xc<=L.heatR+2){
-        const hi=Math.max(k.high,lp), lo=Math.min(k.low,lp);
-        const yH=priceToY(hi), yL=priceToY(lo), yO=priceToY(k.open), yC=priceToY(lp);
-        const up=lp>=k.open, bw=Math.max(cwPx*0.6,1.2);
-        ctx.save(); ctx.beginPath(); ctx.rect(L.heatL,L.top,L.heatW,L.plotH); ctx.clip();
-        // mecha: contorno oscuro + línea clara encima (se ve sobre amarillo)
-        ctx.strokeStyle="rgba(0,0,0,.7)"; ctx.lineWidth=3;
-        ctx.beginPath(); ctx.moveTo(xc,yH); ctx.lineTo(xc,yL); ctx.stroke();
-        ctx.strokeStyle=up?"#c8ffe4":"#ffd0da"; ctx.lineWidth=1.2;
-        ctx.beginPath(); ctx.moveTo(xc,yH); ctx.lineTo(xc,yL); ctx.stroke();
-        // cuerpo con borde oscuro para contraste
-        const bt=Math.min(yO,yC), bh=Math.max(Math.abs(yC-yO),1.5);
-        ctx.fillStyle=up?"#1fe07d":"#ff4560"; ctx.fillRect(xc-bw/2, bt, bw, bh);
-        ctx.strokeStyle="rgba(0,0,0,.85)"; ctx.lineWidth=1; ctx.strokeRect(xc-bw/2, bt, bw, bh);
-        ctx.restore();
-      }
+  // precio actual
+  if(state.livePrice){ const y=yOf(state.livePrice);
+    if(y>=L.top&&y<=L.bottom){
+      ctx.strokeStyle="rgba(55,192,255,.9)"; ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
+      ctx.beginPath(); ctx.moveTo(L.left,y); ctx.lineTo(L.profR,y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle="#0b2233"; ctx.fillRect(L.axisX+2,y-9,84,18);
+      ctx.fillStyle="#37c0ff"; ctx.font="bold 11px Segoe UI"; ctx.textAlign="left"; ctx.textBaseline="middle";
+      ctx.fillText(fmt(state.livePrice), L.axisX+7, y);
+      // cuenta atrás del cierre de la vela actual
+      const ca=cuentaAtras();
+      if(ca){ ctx.fillStyle="#0b2233"; ctx.fillRect(L.axisX+2, y+10, 84, 14);
+        ctx.fillStyle="#7d8ca5"; ctx.font="bold 9.5px Segoe UI";
+        ctx.fillText("⏱ "+ca+" · "+state.tf, L.axisX+7, y+17); }
     }
-
-    // línea de precio actual
-    if(state.livePrice){
-      const y=priceToY(state.livePrice);
-      if(y>=L.top && y<=L.bottom){
-        ctx.strokeStyle="rgba(55,192,255,.9)"; ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
-        ctx.beginPath(); ctx.moveTo(L.heatL,y); ctx.lineTo(L.profR,y); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.font="bold 11px Segoe UI"; ctx.textAlign="left"; ctx.textBaseline="middle";
-        const tag=fmt(state.livePrice);
-        const tw=ctx.measureText(tag).width+10;
-        ctx.fillStyle="#0b2233"; ctx.fillRect(L.heatL+2,y-8,tw,16);
-        ctx.fillStyle="#37c0ff"; ctx.fillText(tag,L.heatL+7,y+0.5);
-      }
-    }
-
-    // burbujas de liquidaciones reales (drift + fade)
-    ctx.save(); ctx.beginPath(); ctx.rect(L.heatL,L.top,L.heatW,L.plotH); ctx.clip();
-    state.liqs = state.liqs.filter(l=>now-l.t < CONFIG.bubbleLife);
-    for(const l of state.liqs){
-      const prog=(now-l.t)/CONFIG.bubbleLife;
-      const y=priceToY(l.price);
-      const x=L.heatR - prog*(L.heatW*0.42);
-      const rad=Math.min(30,Math.max(3,Math.sqrt(l.usd)/55));
-      const alpha=(1-prog)*0.85;
-      const col = l.side==="SELL" ? "255,91,110" : "38,214,124"; // SELL=long liquidado(rojo)
-      ctx.fillStyle=`rgba(${col},${alpha*0.5})`;
-      ctx.beginPath(); ctx.arc(x,y,rad,0,7); ctx.fill();
-      ctx.strokeStyle=`rgba(${col},${alpha})`; ctx.lineWidth=1.4;
-      ctx.beginPath(); ctx.arc(x,y,rad,0,7); ctx.stroke();
-    }
-    ctx.restore();
-
-    // línea del cursor (crosshair) — sigue el mouse por todo el gráfico
-    if(state.cross!=null){ const y=state.cross;
-      ctx.strokeStyle="rgba(255,255,255,.28)"; ctx.lineWidth=1; ctx.setLineDash([4,4]);
-      ctx.beginPath(); ctx.moveTo(L.heatL,y); ctx.lineTo(L.profR,y); ctx.stroke(); ctx.setLineDash([]);
-      // precio del cursor a la derecha
-      const cp=yToPrice(y);
-      ctx.font="bold 10.5px Segoe UI"; ctx.textBaseline="middle"; ctx.textAlign="left";
-      const tag=fmt(cp), tw=ctx.measureText(tag).width;
-      ctx.fillStyle="rgba(40,48,64,.95)"; ctx.fillRect(L.axisX+2, y-8, tw+8, 16);
-      ctx.fillStyle="#e6edf6"; ctx.fillText(tag, L.axisX+6, y+0.5);
-    }
-
-    // crosshair del hover sobre zona (punto amarillo)
-    if(state.hover){ const y=state.hover.y;
-      if(y>=L.top&&y<=L.bottom){
-        ctx.strokeStyle="rgba(255,215,90,.55)"; ctx.lineWidth=1; ctx.setLineDash([4,3]);
-        ctx.beginPath(); ctx.moveTo(L.heatL,y); ctx.lineTo(L.profR,y); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle="#ffd75c"; ctx.beginPath(); ctx.arc(L.profL,y,3.5,0,7); ctx.fill();
-      }
-    }
-
-    // etiquetas flotantes de prioridad (orden grande #1 destacada)
-    drawPriorityBadges(L);
-
+  }
+  // crosshair
+  if(state.hover!=null){ const y=state.hover;
+    ctx.strokeStyle="rgba(255,255,255,.25)"; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(L.left,y); ctx.lineTo(L.profR,y); ctx.stroke(); ctx.setLineDash([]);
   }
   requestAnimationFrame(frame);
 }
 
-function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y);
-  c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
-  c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+/* ---- TOOLTIP ---- */
+let drag=false,dY=0,dX=0;
+cv.addEventListener("mousemove",e=>{
+  if(!state.profile||drag){return;}
+  const L=state.layout, r=cv.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  if(my<L.top||my>L.bottom||mx<L.left||mx>L.profR){ state.hover=null; $("#tip").style.display="none"; return; }
+  const row=Math.floor((pOf(my)-state.lo)/state.bucket);
+  const bv = (row>=0 && row<CONFIG.rows) ? state.profile[row] : 0;
+  const br=row;
+  // usa el MISMO cálculo que el heatmap: si ahí no se pinta color, no hay tooltip
+  const shade = Math.pow(bv/state.gridMax, CONFIG.gamma);
+  if(br<0||br>=CONFIG.rows||shade<0.12){ state.hover=null; $("#tip").style.display="none"; return; }
+  const t=bv/state.gridMax;
+  state.hover=my;
+  const price=state.lo+(br+0.5)*state.bucket;
+  const z=state.zones.find(q=>Math.abs(q.row-br)<=2);
+  const tip=$("#tip");
+  tip.innerHTML=`<div class="tp">${z? (state.zones.indexOf(z)===0?"★ Zona principal":"Zona #"+(state.zones.indexOf(z)+1)) : "Liquidez"}</div>`
+    +`<div class="tr"><small>Precio</small><b>${fmt(price)}</b></div>`
+    +`<div class="tr"><small>Liquidez estimada</small><b style="color:#ffd75c">${usd(bv)}</b></div>`
+    +`<div class="tr"><small>Distancia</small><b>${((price-state.livePrice)/state.livePrice*100).toFixed(2)}%</b></div>`;
+  tip.style.display="block";
+  const tw=tip.offsetWidth,th=tip.offsetHeight;
+  let tx=mx+16; if(tx+tw>L.w-6)tx=mx-tw-16;
+  let ty=my-th/2; if(ty<4)ty=4; if(ty+th>L.h-6)ty=L.h-th-6;
+  tip.style.left=tx+"px"; tip.style.top=ty+"px";
+});
+cv.addEventListener("mouseleave",()=>{state.hover=null;$("#tip").style.display="none";});
 
-function drawPriorityBadges(L){
-  const zs = state.topZones ? state.topZones.slice(0,4) : [];
-  if(!zs.length) return;
-  ctx.textBaseline="middle";
-  const used=[];
-  for(let i=zs.length-1;i>=0;i--){          // de la más débil a la #1 (queda encima)
-    const z=zs[i], y=priceToY(z.price);
-    if(y<L.top+10||y>L.bottom-10) continue;
-    if(used.some(uy=>Math.abs(uy-y)<20)) continue;   // evita superponer píldoras
-    used.push(y);
-    const top=(i===0), tt=tierOf(z.v), col=tt.color;
-    ctx.font="bold "+(top?11.5:10)+"px Segoe UI";
-    const txt=fmt(z.price)+"  "+usdFmt(z.v);
-    const tw=ctx.measureText(txt).width;
-    const rc=top?10:8, h=top?25:20, arrow=7;
-    const w=rc*2+8+tw+11;
-    const x=L.heatR+arrow+3;                 // en el hueco del eje, a la derecha del heatmap
-    if(top){ ctx.shadowColor=col; ctx.shadowBlur=14; }
-    ctx.fillStyle= top? col : "rgba(16,24,38,.96)";
-    roundRect(ctx,x,y-h/2,w,h,h/2); ctx.fill();
-    // flecha apuntando a la IZQUIERDA (al nivel en el heatmap)
-    ctx.beginPath(); ctx.moveTo(x,y-6); ctx.lineTo(x-arrow,y); ctx.lineTo(x,y+6); ctx.closePath(); ctx.fill();
-    ctx.shadowBlur=0;
-    if(!top){ ctx.strokeStyle=col; ctx.lineWidth=1.2; roundRect(ctx,x,y-h/2,w,h,h/2); ctx.stroke(); }
-    // círculo con el número de prioridad
-    const cx=x+rc+5, cy=y;
-    ctx.beginPath(); ctx.arc(cx,cy,rc,0,7);
-    ctx.fillStyle= top? "rgba(0,0,0,.35)":col; ctx.fill();
-    ctx.textAlign="center"; ctx.fillStyle= top? "#fff":"#0a0e17";
-    ctx.font="bold "+(top?12:9.5)+"px Segoe UI"; ctx.fillText(String(i+1), cx, cy+0.5);
-    // texto precio + monto
-    ctx.textAlign="left"; ctx.font="bold "+(top?11.5:10)+"px Segoe UI";
-    ctx.fillStyle= top? "#12080a":"#e6edf6";
-    ctx.fillText(txt, cx+rc+5, cy+0.5);
-  }
-  ctx.textAlign="left";
-}
-
-/* ---------- WEBSOCKET (kline vivo + liquidaciones reales) ---------- */
-function closeWS(){
-  if(state.ws){ try{state.ws.onclose=null; state.ws.close();}catch(e){} state.ws=null; }
-  if(state.tws){ try{state.tws.onclose=null; state.tws.close();}catch(e){} state.tws=null; }
-  clearTimeout(state.treconnectT);
-}
-function connectTradeWS(){
-  const s=state.symbol.toLowerCase();
-  const ws=new WebSocket(`wss://fstream.binance.com/ws/${s}@aggTrade`);  // stream dedicado
-  state.tws=ws;
-  ws.onmessage=e=>{ let d; try{d=JSON.parse(e.data);}catch(_){return;} if(d.e==="aggTrade") handleTrade(d); };
-  ws.onerror=()=>{ try{ws.close();}catch(_){} };
-  ws.onclose=()=>{ if(state.tws!==ws) return; state.tws=null;
-    if(!state.switching) state.treconnectT=setTimeout(connectTradeWS,2500); };
-}
+/* ---- WS ---- */
 function connectWS(){
-  closeWS();
+  if(state.ws){try{state.ws.onclose=null;state.ws.close();}catch(e){}}
   const s=state.symbol.toLowerCase();
-  const url=`${CONFIG.wsBase}${s}@kline_${state.tf}/${s}@forceOrder`;
-  const ws=new WebSocket(url); state.ws=ws;
-  ws.onopen=()=>setStatus("en vivo · "+state.symbol.replace("USDT",""),"ok");
-  ws.onmessage=e=>{
-    let m; try{m=JSON.parse(e.data);}catch(_){return;}
-    const d=m.data; if(!d)return;
-    if(d.e==="kline") handleKline(d.k);
-    else if(d.e==="forceOrder") handleLiq(d.o);
+  const iv=state.klineIv||"3m";
+  const ws=new WebSocket(`${CONFIG.ws}${s}@kline_${iv}`);
+  state.ws=ws;
+  ws.onopen=()=>{ state.lastWsMsg=Date.now(); setStatus("en vivo · "+nm(state.symbol),"ok"); };
+  ws.onmessage=e=>{ state.lastWsMsg=Date.now(); let m; try{m=JSON.parse(e.data);}catch(_){return;}
+    const k=m.data&&m.data.k; if(!k)return;
+    const c=state.candles,last=c[c.length-1];
+    if(k.t===last.t){ last.h=+k.h;last.l=+k.l;last.c=+k.c;last.q=+k.q;last.tb=+k.Q; }
+    else if(k.t>last.t){ c.push({t:k.t,o:+k.o,h:+k.h,l:+k.l,c:+k.c,q:+k.q,tb:+k.Q}); c.shift(); state.need=true; }
+    state.livePrice=+k.c; $("#price b").textContent=fmt(state.livePrice);
   };
-  ws.onerror=()=>{ try{ws.close();}catch(_){} };
-  ws.onclose=()=>{ if(state.ws!==ws) return;         // ignora cierres de sockets viejos
-    state.ws=null; if(!state.switching){ setStatus("reconectando…","");
-      state.reconnectT=setTimeout(connectWS,2500);} };
-  connectTradeWS();                                  // operaciones en vivo (aparte)
-}
-// precio en tiempo real (cada trade, si el stream llega): mueve la línea y la vela
-function handleTrade(d){
-  const price=+d.p; if(!price) return;
-  state.livePrice=price;
-  $("#price b").textContent=fmt(price);
-  const c=state.candles; if(c.length){ const last=c[c.length-1];
-    last.close=price; if(price>last.high)last.high=price; if(price<last.low)last.low=price; }
-}
-function handleKline(k){
-  const c=state.candles; if(!c.length)return;
-  const last=c[c.length-1];
-  const kt=k.t, price=+k.c;
-  if(kt===last.t){
-    last.open=+k.o; last.high=+k.h; last.low=+k.l; last.close=price; last.volume=+k.v; last.qvol=+k.q; last.tbq=+k.Q;
-  } else if(kt>last.t){
-    c.push({t:kt,open:+k.o,high:+k.h,low:+k.l,close:price,volume:+k.v,qvol:+k.q,tbq:+k.Q,oi:last.oi||0});
-    if(c.length>state.limit)c.shift();
-  } else {
-    last.close=price; if(price>last.high)last.high=price; if(price<last.low)last.low=price;
-  }
-  state.livePrice=price;
-  $("#price b").textContent=fmt(price);
-  state.needCompute=true;
-}
-function handleLiq(o){
-  const price=+(o.ap||o.p), qty=+o.q, usd=price*qty;
-  state.liqs.push({price, usd, side:o.S, t:performance.now()});
-  if(state.liqs.length>400) state.liqs.shift();
+  ws.onclose=()=>{ if(state.ws!==ws)return; state.ws=null; setStatus("reconectando…","");
+    setTimeout(connectWS,2500); };
 }
 
-/* ---------- PANEL DE OBJETIVOS (prioridad, tiempo real) ---------- */
-/* ---------- SEGUIMIENTO DE ZONAS BARRIDAS (estadística real) ---------- */
-const TRACK_TOL = 0.0008;   // 0.08% de tolerancia para considerar "tocada"
-function trackZones(){
-  if(!state.showTrack || !state.livePrice || !state.topZones.length) return;
-  const price=state.livePrice, now=Date.now();
-  // registra las 3 zonas principales (una vez cada una, mientras no estén tocadas)
-  state.topZones.slice(0,3).forEach((z,i)=>{
-    const exists=state.track.some(t=>Math.abs(t.price-z.price)/z.price < TRACK_TOL);
-    if(!exists && Math.abs(z.price-price)/price > TRACK_TOL){
-      state.track.push({price:z.price, rank:i+1, born:now, bornPrice:price,
-        above:z.price>price, hit:false, usd:z.v});
-    }
-  });
-  // comprueba si el precio tocó alguna zona pendiente
-  const c=state.candles; const last=c.length? c[c.length-1] : null;
-  for(const t of state.track){
-    if(t.hit) continue;
-    const tol=t.price*TRACK_TOL;
-    const touched = last ? (last.low<=t.price+tol && last.high>=t.price-tol)
-                         : (Math.abs(price-t.price)<=tol);
-    if(touched){ t.hit=true; t.hitAt=now; state.hits++; }
-  }
-  // caduca las que llevan más de 4h sin tocarse -> fallo
-  const MAXAGE=4*3600*1000;
-  state.track = state.track.filter(t=>{
-    if(!t.hit && now-t.born>MAXAGE){ state.misses++; return false; }
-    if(t.hit && now-t.hitAt>10*60000) return false;   // limpia tocadas tras 10 min
-    return true;
-  });
-  if(state.track.length>40) state.track.splice(0, state.track.length-40);
+/* ---- CICLO ---- */
+/* ---- ZONAS MACRO (temporalidad mayor, ej. 4h) ---- */
+function calcHtfZones(cands){
+  if(!cands||!cands.length) return [];
+  const N=cands.length, R=180, levs=state.levs;
+  let lo=Infinity,hi=-Infinity;
+  for(const k of cands){ if(k.l<lo)lo=k.l; if(k.h>hi)hi=k.h;
+    for(const L of levs){ const dl=k.c*(1-1/L),sl=k.c*(1+1/L); if(dl<lo)lo=dl; if(sl>hi)hi=sl; } }
+  const pad=(hi-lo)*0.015; lo-=pad; hi+=pad; const bucket=(hi-lo)/R;
+  const rowOf=p=>{ const r=Math.floor((p-lo)/bucket); return (r<0||r>=R)?-1:r; };
+  const LEVSHARE={10:0.35,25:0.30,50:0.22,100:0.13}, OF=CONFIG.openFrac;
+  const grid=Array.from({length:N},()=>new Float64Array(R));
+  let live=[];
+  for(let i=0;i<N;i++){ const k=cands[i], keep=[];
+    for(const a of live){ if(a.p>=k.l&&a.p<=k.h){ if(a.r>=0) for(let j=a.s;j<=i;j++) grid[j][a.r]+=a.v; } else keep.push(a); }
+    live=keep;
+    let lf=(k.q>0)?(k.tb||0)/k.q:0.5; lf=Math.max(0,Math.min(1,lf));
+    const nuevo=k.q*OF;
+    for(const L of levs){ const share=LEVSHARE[L]||0.25, dl=k.c*(1-1/L),sl=k.c*(1+1/L);
+      live.push({r:rowOf(dl),p:dl,v:nuevo*lf*share,s:i});
+      live.push({r:rowOf(sl),p:sl,v:nuevo*(1-lf)*share,s:i}); } }
+  for(const a of live){ if(a.r>=0) for(let j=a.s;j<N;j++) grid[j][a.r]+=a.v; }
+  const prof=new Float64Array(R); let gmax=0;
+  for(let r=0;r<R;r++){ let mx=0; for(let i=0;i<N;i++){const v=grid[i][r]; if(v>mx)mx=v;} prof[r]=mx; if(mx>gmax)gmax=mx; }
+  // picos macro fuertes y separados
+  const MIN=gmax*0.35, cand=[];
+  for(let r=1;r<R-1;r++){ const v=prof[r]; if(v<=MIN)continue;
+    if(v>=prof[r-1]&&v>=prof[r+1]) cand.push({price:lo+(r+0.5)*bucket, v, row:r}); }
+  cand.sort((a,b)=>b.v-a.v);
+  const zones=[]; const sep=Math.round(R*0.025);
+  for(const z of cand){ if(zones.some(q=>Math.abs(q.row-z.row)<sep))continue; zones.push(z); if(zones.length>=5)break; }
+  return zones;
 }
-
-/* ---------- VOLUMEN 24h (real, en vivo) ---------- */
-async function poll24h(){
+async function fetchHtf(){
+  const htf=CONFIG.htfFor[state.tf];
+  if(!state.showHTF||!htf){ state.htfZones=[]; state.htfTf=null; return; }
   try{
-    const r=await fetch(`${CONFIG.ticker24}?symbol=${state.symbol}`);
+    const lim=CONFIG.limitByTf[htf]||180;
+    const r=await fetch(`${CONFIG.rest}?symbol=${state.symbol}&interval=${htf}&limit=${lim}`);
+    if(!r.ok) throw new Error("htf "+r.status);
+    const raw=await r.json();
+    const cands=raw.map(k=>({o:+k[1],h:+k[2],l:+k[3],c:+k[4],q:+k[7],tb:+k[10]}));
+    state.htfZones=calcHtfZones(cands); state.htfTf=htf;
+  }catch(e){ state.htfZones=[]; state.htfTf=null; }
+}
+
+// recarga SOLO velas/zonas al cambiar TF — NO toca el libro de órdenes (no depende del TF)
+async function reloadTf(){
+  setStatus("cargando…","");
+  state.userZoom=false; state.viewLo=null; state.viewHi=null; state.x0=null; state.x1=null;
+  try{ await fetchData(); $("#price b").textContent=fmt(state.livePrice);
+    compute(); render(); fetchHtf().then(render); connectWS();
+    // el libro (WS depth) sigue vivo — solo re-procesa lo que ya tiene
+    if(state.bookRaw) procesarBook();
+  }catch(e){ setStatus("error: "+(e.message||e),"err"); console.error(e); }
+}
+
+async function reload(){
+  setStatus("cargando…","");
+  state.userZoom=false; state.viewLo=null; state.viewHi=null; state.x0=null; state.x1=null;
+  state.lsBuy=0; state.lsSell=0; state.lsLive=false;
+  state.bookTracked=[]; state.bookWalls=[];   // reinicia el seguimiento de muros al cambiar par
+  state.depthBook={bids:new Map(), asks:new Map()};   // reinicia el libro del WS
+  try{ await fetchData(); $("#price b").textContent=fmt(state.livePrice);
+    compute(); render(); pollLS(); fetchHtf().then(render); fetchBook().then(render); connectWS(); connectDepthWs(); }
+  catch(e){
+    const local = location.protocol==="file:";
+    // muestra el error REAL para diagnosticar
+    setStatus((local?"[file://] ":"")+"error: "+(e.message||e), "err");
+    console.error("Fallo al cargar velas:", e);
+  }
+}
+// recalcula solo al cerrar vela o cada 30s (nada de saltos)
+setInterval(()=>{ if(state.need){ compute(); render(); state.need=false; } },1000);
+setInterval(()=>{ if(state.candles.length){ compute(); render(); } },30000);
+setInterval(pollLS,1000);      // datos taker reales
+setInterval(updateLS,400);     // barra en vivo
+setInterval(()=>{ if(state.showBook) fetchBook().then(render); }, 2000);   // liquidez del libro acumulada
+// RESPALDO: re-sincroniza velas por REST cada 20s (por si el WS se cae, no se congela)
+setInterval(refreshCandles, 20000);
+// VIGILANTE: si el WS lleva >30s sin mensajes, lo reconecta
+setInterval(()=>{
+  if(state.lastWsMsg && Date.now()-state.lastWsMsg>30000){
+    setStatus("reconectando…",""); connectWS();
+  }
+}, 10000);
+addEventListener("resize",()=>{resize();if(state.grid)render();});
+
+/* ---- RESPALDO: trae velas frescas por REST (mantiene vivo aunque el WS muera) ---- */
+async function refreshCandles(){
+  if(!state.candles.length) return;
+  try{
+    const lim=CONFIG.limitByTf[state.tf]||240;
+    const r=await fetch(`${CONFIG.rest}?symbol=${state.symbol}&interval=${state.tf}&limit=${lim}`);
     if(!r.ok) return;
-    const d=await r.json();
-    const v=$("#vol24"), c=$("#chg24");
-    if(v) v.textContent=usdFmt(+d.quoteVolume);
-    if(c){ const p=+d.priceChangePercent;
-      c.textContent=(p>=0?"+":"")+p.toFixed(2)+"%";
-      c.style.color = p>=0? "#26d67c":"#ff5b6e"; }
+    const raw=await r.json();
+    state.candles=raw.map(k=>({t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],q:+k[7],tb:+k[10]}));
+    state.livePrice=state.candles[state.candles.length-1].c;
+    $("#price b").textContent=fmt(state.livePrice);
+    state.need=true;   // fuerza recálculo con los datos nuevos
   }catch(e){}
 }
 
-function updateTargets(){
-  const box=$("#targets"); if(!box) return;
-  if(!state.topZones.length || !state.livePrice){ box.innerHTML=""; return; }
-  const price=state.livePrice;
-  let h=`<div class="tt">🎯 objetivos de liquidez · prioridad</div>`;
-  h+=`<div class="cp">Precio actual: ${fmt(price)}</div>`;
-  state.topZones.slice(0,8).forEach((z,i)=>{
-    const up=z.price>price, dist=(z.price-price)/price*100;
-    // estado de barrido (si el seguimiento está activo)
-    let st="";
-    if(state.showTrack){
-      const t=state.track.find(x=>Math.abs(x.price-z.price)/z.price < TRACK_TOL);
-      st = t ? (t.hit ? `<span class="sw hit" title="Barrida">✓</span>`
-                      : `<span class="sw pend" title="Pendiente">○</span>`)
-             : `<span class="sw"></span>`;
-    }
-    const tt=tierOf(z.v);
-    h+=`<div class="row${i===0?' main':''}" title="${tt.name}">`
-      +`<span class="rk">${i+1}</span>`
-      +`<span class="tdot" style="background:${tt.color}"></span>`
-      +`<span class="ar ${up?'up':'dn'}">${up?'▲':'▼'}</span>`
-      +`<span class="pr">${fmt(z.price)}</span>`
-      +`<span class="am" style="color:${tt.color}">${usdFmt(z.v)}</span>`
-      + st
-      +`<span class="ds ${up?'up':'dn'}">${dist>=0?'+':''}${dist.toFixed(1)}%</span>`
-      +`</div>`;
-  });
-  // resumen de aciertos
-  if(state.showTrack){ const tot=state.hits+state.misses;
-    const pct=tot?Math.round(state.hits/tot*100):0;
-    h+=`<div class="swstat">${tot?`Barridas <b style="color:#26d67c">${state.hits}</b>/${tot} · <b>${pct}%</b>`
-      :`Siguiendo ${state.track.length} zona(s)…`}</div>`;
-  }
-  box.innerHTML=h;
-}
-
-/* ---------- TOOLTIP FLOTANTE (zonas principales + bandas amarillas) ---------- */
-function tipHTML(title, price, usdt, coins, coin, side, cum){
-  const t=tierOf(usdt);
-  return `<div class="tp">Zona viva</div>`
-    +`<div class="tr"><small>Precio</small><b>${fmt(price)}</b></div>`
-    +`<div class="tr"><small>Liquidez estimada</small><b style="color:#ffd75c">${usdFmt(usdt)}</b></div>`
-    +`<div class="tr"><small>≈ ${coinFmt(coins)} ${coin}</small></div>`
-    +`<div class="tr"><small>Prioridad</small><b style="color:${t.color}">${t.name}</b></div>`
-    +`<div class="tr"><small>${side}</small><b>${usdFmt(cum)}</b></div>`;
-}
-function placeTip(clientX, anchorY){
-  const L=state.layout, tip=$("#tip"), rect=cv.getBoundingClientRect();
-  tip.style.display="block";
-  const tw=tip.offsetWidth, th=tip.offsetHeight;
-  let tx=clientX-rect.left+16; if(tx+tw>L.w-6) tx=(clientX-rect.left)-tw-16;
-  let ty=anchorY-th/2; if(ty+th>L.h-6) ty=L.h-th-6; if(ty<4) ty=4;
-  tip.style.left=tx+"px"; tip.style.top=ty+"px";
-  state.hover={y:anchorY};
-}
-function showTip(clientX, mouseY){
-  const L=state.layout, tip=$("#tip");
-  if(!L||!state.grid||!state.profile||!state.livePrice||mouseY<L.top||mouseY>L.bottom){ hideTip(); return; }
-  const mouseX=clientX-cv.getBoundingClientRect().left;
-
-  // En el heatmap: cualquier banda con liquidez. En el panel: solo zonas principales.
-  const inHeat  = mouseX>=L.heatL-2 && mouseX<=L.heatR+2;
-  const inPanel = mouseX>=L.profL-2 && mouseX<=L.profR+2;
-  if(!inHeat && !inPanel){ hideTip(); return; }
-
-  const coin=state.symbol.replace("USDT",""), prof=state.profile, ROWS=CONFIG.rows;
-  let pmax=0; for(const v of prof) if(v>pmax)pmax=v; if(pmax<=0){ hideTip(); return; }
-
-  // EN EL PANEL DERECHO: solo sobre una zona PRINCIPAL (no en cualquier parte)
-  if(inPanel && !inHeat){
-    let best=null,bd=1e9;
-    state.topZones.slice(0,10).forEach((z,i)=>{ const zy=priceToY(z.price);
-      if(zy<L.top||zy>L.bottom)return; const d=Math.abs(zy-mouseY); if(d<bd){bd=d;best={z,zy,i};} });
-    if(!best || bd>12){ hideTip(); return; }
-    const z=best.z, r=z.row;
-    const pRw=Math.max(0,Math.min(ROWS-1,Math.floor((state.livePrice-state.binLo)/state.bucket)));
-    let cum=0,side; if(r>=pRw){ for(let i=pRw;i<=r;i++)cum+=prof[i]||0; side="Corta acum. (arriba)"; }
-      else{ for(let i=r;i<=pRw;i++)cum+=prof[i]||0; side="Larga acum. (abajo)"; }
-    tip.innerHTML=tipHTML((best.i===0?"★ ":"")+"Zona #"+(best.i+1), z.price, z.v, z.v/z.price, coin, side, cum);
-    placeTip(clientX, best.zy); return;
-  }
-
-  // EN EL HEATMAP: pico local bajo el cursor (cualquier banda amarilla, ventana adaptada al zoom)
-  const cr=Math.floor((yToPrice(mouseY)-state.binLo)/state.bucket);
-  const rpp=Math.max(0.0001, L.plotH*state.bucket/(state.viewHi-state.viewLo));
-  const win=Math.max(2, Math.min(10, Math.round(6/rpp)));
-  let br=-1, bv=0;
-  for(let d=-win; d<=win; d++){ const r=cr+d; if(r<0||r>=ROWS)continue; if(prof[r]>bv){ bv=prof[r]; br=r; } }
-  const tPeak=Math.pow(Math.min(bv/state.gridMax,1),CONFIG.gamma);   // mismo cálculo que el color del heatmap
-  if(br<0 || tPeak < CONFIG.tipMinT){ hideTip(); return; }           // solo bandas amarillas (fuertes)
-
-  const price=state.binLo+(br+0.5)*state.bucket, y=priceToY(price);
-  let rank=-1;
-  state.topZones.slice(0,10).forEach((z,i)=>{ if(rank<0 && Math.abs(z.row-br)<=1) rank=i; });
-  const title = rank>=0 ? ((rank===0?"★ ":"")+"Zona #"+(rank+1)) : "Liquidez";
-
-  const pRow=Math.max(0,Math.min(ROWS-1,Math.floor((state.livePrice-state.binLo)/state.bucket)));
-  let cum=0, side;
-  if(br>=pRow){ for(let i=pRow;i<=br;i++) cum+=prof[i]||0; side="Corta acum. (arriba)"; }
-  else{ for(let i=br;i<=pRow;i++) cum+=prof[i]||0; side="Larga acum. (abajo)"; }
-
-  tip.innerHTML=tipHTML(title, price, bv, bv/price, coin, side, cum);
-  placeTip(clientX, y);
-}
-function hideTip(){ const t=$("#tip"); if(t) t.style.display="none"; state.hover=null; }
-
-/* ---------- BARRA LARGO/CORTO (velas 1m por REST, confiable) ---------- */
+/* ---- LARGO / CORTO (volumen taker real, por REST) ---- */
 async function pollLS(){
   if(!state.candles.length) return;
-  const cfg = LS_POLL[state.tf] || ["1m",5];
+  const [iv,lim]=["1m",5];   // presión de los últimos 5 min (inmediata)
   try{
-    const url=`${CONFIG.restKlines}?symbol=${state.symbol}&interval=${cfg[0]}&limit=${cfg[1]}`;
-    const r=await fetch(url); if(!r.ok) throw new Error("ls "+r.status);
+    const r=await fetch(`${CONFIG.rest}?symbol=${state.symbol}&interval=${iv}&limit=${lim}`);
+    if(!r.ok) return;
     const raw=await r.json();
-    let buy=0, tot=0;
-    for(const k of raw){ buy+=+k[10]; tot+=+k[7]; }   // taker buy quote (10), total quote (7)
+    let buy=0,tot=0;
+    for(const k of raw){ buy+=+k[10]; tot+=+k[7]; }   // taker buy quote, total quote
     if(tot>0){ state.lsBuy=buy; state.lsSell=tot-buy; state.lsLive=true; state.lsAt=Date.now(); }
-    // respaldo: sincroniza precio y vela actual (por si el stream no llega)
-    const lastClose=+raw[raw.length-1][4];
-    if(lastClose>0){ state.livePrice=lastClose; $("#price b").textContent=fmt(lastClose);
-      const c=state.candles; if(c.length){ const lc=c[c.length-1];
-        lc.close=lastClose; if(lastClose>lc.high)lc.high=lastClose; if(lastClose<lc.low)lc.low=lastClose; } }
-  }catch(e){ /* mantiene el último valor */ }
+    // respaldo del precio en vivo
+    const lc=+raw[raw.length-1][4];
+    if(lc>0){ state.livePrice=lc; $("#price b").textContent=fmt(lc);
+      const c=state.candles, last=c[c.length-1];
+      last.c=lc; if(lc>last.h)last.h=lc; if(lc<last.l)last.l=lc; }
+  }catch(e){}
 }
 function updateLS(){
-  let buy=state.lsBuy, sell=state.lsSell;
-  if(buy+sell<=0){                                   // aún sin datos: respaldo con velas del chart
-    const c=state.candles; if(!c.length) return;
-    let tb=0,tt=0,n=Math.min(2,c.length);
-    for(let i=c.length-n;i<c.length;i++){ tb+=c[i].tbq||0; tt+=c[i].qvol||0; }
-    if(tt<=0) return; buy=tb; sell=tt-tb;
-  }
-  const tot=buy+sell, lf=buy/tot, sf=1-lf;
-  const lb=$("#lsLongBar"), sb=$("#lsShortBar");
+  const buy=state.lsBuy, sell=state.lsSell, tot=buy+sell;
+  if(tot<=0) return;
+  const lf=buy/tot, sf=1-lf;
+  const lb=$("#lsLong"), sb=$("#lsShort");
   lb.style.flexGrow=Math.max(lf,0.001); sb.style.flexGrow=Math.max(sf,0.001);
   lb.textContent=(lf*100).toFixed(1)+"%"; sb.textContent=(sf*100).toFixed(1)+"%";
-  $("#lsLongVal").textContent=usdFmt(buy);
-  $("#lsShortVal").textContent=usdFmt(sell);
-  const fl=$("#lsFlow");
-  if(fl){
-    if(state.lsLive){ const age=Math.round((Date.now()-(state.lsAt||0))/1000);
-      fl.textContent = age<=2 ? "· en vivo ⚡" : "· hace "+age+"s";
-      fl.style.color = age<=2 ? "#26d67c" : "#ffb020";
-    } else { fl.textContent="· cargando…"; fl.style.color="#7d8ca5"; }
-  }
-  const ll=$("#lsLabel"); if(ll) ll.textContent="Largo / Corto · vol. taker · "+state.tf;
+  $("#lsLongVal").textContent=usd(buy);
+  $("#lsShortVal").textContent=usd(sell);
+  $("#lsLabel").textContent="Largo / Corto · vol. taker · 5m";
+  const fl=$("#lsFlow"), age=Math.round((Date.now()-state.lsAt)/1000);
+  if(state.lsLive){ fl.textContent = age<=2? "· en vivo ⚡" : "· hace "+age+"s";
+    fl.style.color = age<=2? "#26d67c":"#ffb020"; }
+  else { fl.textContent="· cargando…"; fl.style.color="#7d8ca5"; }
   const sk=$("#lsSkew");
   if(lf>=0.5){ sk.textContent="▲ Presión compradora"; sk.style.color="#26d67c"; }
   else { sk.textContent="▼ Presión vendedora"; sk.style.color="#ff5b6e"; }
 }
 
-/* ---------- LOOPS ---------- */
-// recalcular heatmap si hace falta (throttle) — tiempo real
-setInterval(()=>{ if(state.needCompute && state.candles.length){
-  computeHeatmap(); buildStatic(); updateTargets(); state.needCompute=false; } }, 700);
-// refrescar vela abierta cada 2s
-setInterval(()=>{ if(state.candles.length) state.needCompute=true; }, 2000);
-// objetivos, L/S y seguimiento cada 1s
-setInterval(()=>{
-  updateTargets();
-  updateLS();
-  trackZones();
-},1000);
-// volumen 24h cada 5s
-setInterval(poll24h, 5000);
-// re-sincronizar klines (y OI) cada 60s por si hay drift
-setInterval(async()=>{ if(state.switching||!state.candles.length)return;
-  try{ await fetchKlines(); if(state.weightMode!=="vol"){ await fetchOI(); } applyOItoCandles(); await fetchHTF(); state.needCompute=true; }catch(e){} }, 60000);
-
-window.addEventListener("resize",()=>{ resizeCanvas(); if(state.grid) buildStatic(); });
-setInterval(updateLS, 400);   // barra L/S en vivo
-setInterval(pollLS, 1000);    // datos taker por REST (cada segundo)
-document.addEventListener("click",()=>closeAllDropdowns());
-
-/* ---------- ZOOM / PAN en el eje de precios ---------- */
-let zoomRaf=0;
-function reRender(){ if(zoomRaf) return;
-  zoomRaf=requestAnimationFrame(()=>{ zoomRaf=0; buildStatic(); }); }
-
+/* ---- ZOOM / PAN ---- */
 cv.addEventListener("wheel",e=>{
-  if(state.viewLo==null||!state.layout) return;
+  if(!state.grid||!state.layout) return;
   e.preventDefault();
-  const rect=cv.getBoundingClientRect(), L=state.layout, N=state.candles.length;
-  // con Shift, muchos navegadores mandan el scroll en deltaX; tomamos el mayor
-  const delta = Math.abs(e.deltaY)>=Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
-
-  if(e.shiftKey || (Math.abs(e.deltaX)>Math.abs(e.deltaY))){   // ZOOM HORIZONTAL (anclado a la vela actual)
-    if(state.x0==null){ state.x0=0; state.x1=N-1; }
-    const f=delta>0?1.14:0.88;               // >0 aleja (más velas), <0 acerca
-    let span=(state.x1-state.x0)*f;
-    span=Math.max(8, Math.min(N-1, span));
-    state.x1=N-1;                            // borde derecho fijo = vela actual visible
-    state.x0=Math.max(0,(N-1)-span);
-    state.userZoomX=(state.x0>0);
-    buildStatic();
-    return;
+  const L=state.layout, N=state.candles.length;
+  const delta=Math.abs(e.deltaY)>=Math.abs(e.deltaX)? e.deltaY : e.deltaX;
+  if(e.shiftKey || Math.abs(e.deltaX)>Math.abs(e.deltaY)){   // horizontal: acerca las velas
+    const L=state.layout, N2=state.candles.length;
+    const f=delta>0?1.15:0.87;
+    let span=(state.x1-state.x0)*f; span=Math.max(10, Math.min(N2+span*0.15, span));
+    // ANCLA a la derecha: la vela actual se queda fija, el gráfico crece hacia la IZQUIERDA
+    const pad=span*0.12;                    // hueco fijo a la derecha (vela actual no pegada al borde)
+    const b=(N2-1)+pad;
+    let a=b-span; if(a<0) a=0;
+    state.x0=a; state.x1=b;
+    render(); return;
   }
-
-  // ZOOM VERTICAL (precio)
-  const my=e.clientY-rect.top;
-  const pAt=yToPrice(my);
-  const f=delta>0?1.12:0.89;
+  // vertical: precio
+  const my=e.clientY-cv.getBoundingClientRect().top;
+  const pAt=pOf(my), f=delta>0?1.12:0.89;
   let lo=pAt-(pAt-state.viewLo)*f, hi=pAt+(state.viewHi-pAt)*f;
-  const dataR=state.priceHi-state.priceLo, minR=dataR*0.006;
-  if(hi-lo>dataR){ lo=state.priceLo; hi=state.priceHi; state.userZoom=false; }
-  else{ if(hi-lo<minR){ const c=(lo+hi)/2; lo=c-minR/2; hi=c+minR/2; } state.userZoom=true; }
-  state.viewLo=lo; state.viewHi=hi; reRender();
+  if(lo<state.lo) lo=state.lo; if(hi>state.hi) hi=state.hi;
+  const min=(state.hi-state.lo)*0.004;
+  if(hi-lo<min){ const c=(lo+hi)/2; lo=c-min/2; hi=c+min/2; }
+  state.userZoom=true; state.viewLo=lo; state.viewHi=hi; render();
 },{passive:false});
 
-let dragging=false, dragY=0, dragX=0;
-cv.addEventListener("mousedown",e=>{ dragging=true; dragY=e.clientY; dragX=e.clientX; cv.style.cursor="grabbing"; });
-window.addEventListener("mouseup",()=>{ if(dragging){ dragging=false; cv.style.cursor="default"; } });
-window.addEventListener("mousemove",e=>{ if(!dragging||state.viewLo==null||!state.layout)return;
+cv.addEventListener("mousedown",e=>{drag=true;dY=e.clientY;dX=e.clientX;cv.style.cursor="grabbing";});
+addEventListener("mouseup",()=>{if(drag){drag=false;cv.style.cursor="default";}});
+addEventListener("mousemove",e=>{
+  if(!drag||!state.grid) return;
   const L=state.layout, N=state.candles.length;
-  // pan vertical (con tope para no salirse de los datos)
-  const dY=(e.clientY-dragY)/L.plotH*(state.viewHi-state.viewLo); dragY=e.clientY;
-  state.viewLo+=dY; state.viewHi+=dY; state.userZoom=true;
-  const vr=state.viewHi-state.viewLo;
-  let ctr=Math.max(state.priceLo, Math.min(state.priceHi, (state.viewLo+state.viewHi)/2));
-  state.viewLo=ctr-vr/2; state.viewHi=ctr+vr/2;
-  // pan horizontal
-  const dxpx=e.clientX-dragX; dragX=e.clientX;
-  if(state.x0!=null){ const dC=-dxpx/L.heatW*(state.x1-state.x0);
-    let a=state.x0+dC, b=state.x1+dC;
-    if(a<0){ b-=a; a=0; } if(b>N-1){ a-=(b-(N-1)); b=N-1; if(a<0)a=0; }
-    state.x0=a; state.x1=b; state.userZoomX=(b-a<N-1); }
-  reRender();
+  const dy=(e.clientY-dY)/L.plotH*(state.viewHi-state.viewLo); dY=e.clientY;
+  state.viewLo+=dy; state.viewHi+=dy; state.userZoom=true;
+  const dx=e.clientX-dX; dX=e.clientX;
+  const dc=-dx/L.plotW*(state.x1-state.x0);
+  let a=state.x0+dc,b=state.x1+dc;
+  const pad=(b-a)*0.12, maxB=(N-1)+pad;
+  if(b>maxB){ a-=(b-maxB); b=maxB; } if(a<0){ b-=a; a=0; }
+  state.x0=a; state.x1=b;
+  render();
 });
-cv.addEventListener("dblclick",()=>{ state.userZoom=false; state.userZoomX=false; state.x0=null; state.x1=null;
-  if(state.grid){ state.viewLo=state.priceLo; state.viewHi=state.priceHi; reRender(); } });
+/* ---- TÁCTIL (tablet / móvil): 1 dedo = mover · 2 dedos = zoom ---- */
+let tPrev=null, tPinch=null;
+const tDist=(a,b)=>Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+cv.addEventListener("touchstart",e=>{
+  if(!state.grid) return;
+  if(e.touches.length===1){ tPrev={x:e.touches[0].clientX, y:e.touches[0].clientY}; tPinch=null; }
+  else if(e.touches.length===2){
+    tPinch={ d:tDist(e.touches[0],e.touches[1]),
+             span:state.x1-state.x0, lo:state.viewLo, hi:state.viewHi };
+    tPrev=null;
+  }
+},{passive:true});
 
-// hover -> crosshair siempre + tooltip flotante sobre zonas
-cv.addEventListener("mousemove",e=>{
-  if(dragging){ state.cross=null; hideTip(); return; }
-  const my=e.clientY-cv.getBoundingClientRect().top;
-  const L=state.layout;
-  state.cross = (L && my>=L.top && my<=L.bottom) ? my : null;   // línea que sigue el cursor
-  showTip(e.clientX, my);
+cv.addEventListener("touchmove",e=>{
+  if(!state.grid||!state.layout) return;
+  const L=state.layout, N=state.candles.length;
+  // 1 dedo: desplaza (horizontal = tiempo, vertical = precio)
+  if(e.touches.length===1 && tPrev){
+    e.preventDefault();
+    const t=e.touches[0];
+    const dy=(t.clientY-tPrev.y)/L.plotH*(state.viewHi-state.viewLo);
+    state.viewLo+=dy; state.viewHi+=dy; state.userZoom=true;
+    const dx=t.clientX-tPrev.x;
+    const dc=-dx/L.plotW*(state.x1-state.x0);
+    let a=state.x0+dc, b=state.x1+dc;
+    const pad=(b-a)*0.12, maxB=(N-1)+pad;
+    if(b>maxB){ a-=(b-maxB); b=maxB; } if(a<0){ b-=a; a=0; }
+    state.x0=a; state.x1=b;
+    tPrev={x:t.clientX, y:t.clientY};
+    render();
+  }
+  // 2 dedos: pellizco = zoom (horizontal y vertical a la vez)
+  else if(e.touches.length===2 && tPinch){
+    e.preventDefault();
+    const d=tDist(e.touches[0],e.touches[1]);
+    const f=tPinch.d/(d||1);                       // separar dedos = acercar
+    // horizontal, anclado a la derecha (vela actual fija)
+    let span=Math.max(10, Math.min(N*1.2, tPinch.span*f));
+    const pad=span*0.12, b=(N-1)+pad;
+    let a=b-span; if(a<0) a=0;
+    state.x0=a; state.x1=b;
+    // vertical, centrado
+    const c=(tPinch.lo+tPinch.hi)/2, half=(tPinch.hi-tPinch.lo)/2*f;
+    let lo=c-half, hi=c+half;
+    if(lo<state.lo) lo=state.lo; if(hi>state.hi) hi=state.hi;
+    const min=(state.hi-state.lo)*0.004;
+    if(hi-lo<min){ lo=c-min/2; hi=c+min/2; }
+    state.viewLo=lo; state.viewHi=hi; state.userZoom=true;
+    render();
+  }
+},{passive:false});
+
+cv.addEventListener("touchend",e=>{
+  if(e.touches.length===0){ tPrev=null; tPinch=null;
+    // doble toque = resetear vista (como el doble clic en PC)
+    const now=Date.now();
+    if(now-(state.lastTap||0)<300){
+      state.userZoom=false; state.viewLo=null; state.viewHi=null; state.x0=null; state.x1=null;
+      compute(); render();
+    }
+    state.lastTap=now;
+  }
+  else if(e.touches.length===1){ tPrev={x:e.touches[0].clientX,y:e.touches[0].clientY}; tPinch=null; }
+},{passive:true});
+
+cv.addEventListener("dblclick",()=>{
+  state.userZoom=false; state.viewLo=null; state.viewHi=null; state.x0=null; state.x1=null;
+  compute(); render();   // recalcula la vista inicial centrada
 });
-cv.addEventListener("mouseleave", ()=>{ state.cross=null; hideTip(); });
 
-/* ---------- START ---------- */
-buildUI();
-resizeCanvas();
-reload();
-requestAnimationFrame(frame);
+try{ buildUI(); resize(); reload(); requestAnimationFrame(frame); }
+catch(err){ const s=document.getElementById("stxt");
+  if(s){ s.textContent="error inicio: "+err.message; s.parentElement.querySelector(".dot").className="dot err"; }
+  console.error(err); }
 </script>
 </body>
 </html>
