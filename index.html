@@ -336,6 +336,17 @@
       color:#ffffff !important;
     }
     select.liquidity-btn, .ls-win-sel { color-scheme:dark; }   /* el navegador pinta el popup en modo oscuro */
+
+    /* [AÑADIDO v45] panel de estadísticas más grande y centrado */
+    .stats-column { text-align:center !important; padding:4px 10px !important; }
+    .stats-row { justify-content:center !important; gap:8px !important;
+                 font-size:13px !important; line-height:1.5 !important; }
+    .stats-row .stats-label { font-size:12px !important; }
+    .stats-row .stats-value { font-size:13px !important; }
+    #ls-long, #ls-short { font-size:14px !important; font-weight:700 !important; }
+    #ls-long-usd, #ls-short-usd { font-size:12px !important; }
+    #real-spread, #real-bid-ask { font-size:13px !important; }
+    .imbalance-container { text-align:center !important; }
 </style>
   <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
 </head>
@@ -8660,6 +8671,18 @@ const MapaLiq = (function(){
             cx.fillStyle=c; cx.fillRect(x-bw/2, rowY[r]-rowH/2, bw, rowH);
           }
         }
+        // [AÑADIDO v45] la "línea" vertical del borde es el corte en seco de TODAS las bandas
+        // en la columna de la vela actual (ahí se acumula la liquidez viva). Se difumina el
+        // borde con destination-out: puro cosmético, los datos del modelo no se tocan.
+        const fadeW=Math.min(34, Math.max(12, bw*2));
+        const gEdge=cx.createLinearGradient(w-axisPad-fadeW, 0, w-axisPad, 0);
+        gEdge.addColorStop(0, "rgba(0,0,0,0)");
+        gEdge.addColorStop(1, "rgba(0,0,0,1)");
+        cx.save();
+        cx.globalCompositeOperation="destination-out";
+        cx.fillStyle=gEdge;
+        cx.fillRect(w-axisPad-fadeW, 0, fadeW, h);
+        cx.restore();
       }
         }   // [AÑADIDO v31] cierre de la guardia anti-stale
       }
@@ -8684,9 +8707,16 @@ const MapaLiq = (function(){
         cx.fillStyle=short?`rgba(255,91,110,${alpha})`:`rgba(38,214,124,${alpha})`;
         const bh=Math.max(10, Math.min(26, 8+g.calor*3));
         cx.fillRect(0, y-bh/2, w-axisPad, bh);
-        cx.fillStyle=short?"rgba(255,140,150,0.95)":"rgba(120,240,170,0.95)";
-        cx.font="bold 10px Consolas";
-        cx.fillText(`🔥${short?"SHORT":"LONG"} ${fmtP(g.price)} · ${g.fuentes} señales`, 6, y+3);
+        // [AÑADIDO v45] etiqueta CENTRADA en el chart y más grande: antes iba pegada a la
+        // esquina izquierda y no se apreciaba a qué altura estaba la zona
+        const lbl=`🔥 ${short?"SHORT":"LONG"} ${fmtP(g.price)} · ${g.fuentes} señales`;
+        cx.font="bold 12px Consolas";
+        const lblW=cx.measureText(lbl).width;
+        const lblX=Math.max(8, (w-axisPad)/2 - lblW/2);
+        cx.fillStyle="rgba(3,6,12,0.78)";
+        cx.fillRect(lblX-8, y-10, lblW+16, 19);
+        cx.fillStyle=short?"rgba(255,150,160,0.98)":"rgba(130,245,180,0.98)";
+        cx.fillText(lbl, lblX, y+4);
       }
     }
     // 4) ZONAS DE REACCIÓN (líneas punteadas con toques)
@@ -8709,15 +8739,9 @@ const MapaLiq = (function(){
         for(const wll of S.bookWalls){
           const y=yOf(wll.price);
           const bid=wll.side==="bid";
-          if(y==null||y<0||y>h){
-            // muro fuera del rango visible → indicador en el borde con precio y tamaño
-            const arriba=(y!=null&&y<0)|| (y==null&&price&&wll.price>price);
-            const yy=arriba?(16+offUp++*16):(h-10-offDn++*16);   // [AÑADIDO v36] separación acorde a la fuente
-            cx.fillStyle=bid?"rgba(77,163,255,0.85)":"rgba(192,132,252,0.85)";   // [AÑADIDO v28] colores nuevos de muro
-            cx.font="bold 11px Consolas";   // [AÑADIDO v36]
-            cx.fillText(`${arriba?"▲":"▼"} 🐋 ${fmtP(wll.price)} · ${usdF(wll.usd)} (fuera de vista)`, 6, yy);
-            continue;
-          }
+          // [AÑADIDO v45] si el muro no está en el rango visible, NO se pinta nada
+          // (fuera los avisos de "fuera de vista" que ensuciaban las esquinas)
+          if(y==null||y<0||y>h) continue;
           // [AÑADIDO v28] muros AZUL(compra)/VIOLETA(venta) + trazo discontinuo largo:
           // identidad visual totalmente distinta de las zonas inst (verde/rojo, trazo fino)
           const esDominante=(wll.usd===maxUsd);
@@ -8731,15 +8755,24 @@ const MapaLiq = (function(){
           cx.setLineDash([]);
           // etiqueta sobre chip oscuro (legible encima del heatmap)
           // [AÑADIDO v36] etiquetas de muro legibles: fuente 12px bold, chip con más contraste y padding
-          const txt=`${esDominante?"★ ":""}🐋 ${bid?"COMPRA":"VENTA"} ${fmtP(wll.price)} · ${usdF(wll.usd)}`;
+          // [AÑADIDO v45] la ★ del muro dominante va en AMARILLO (y el chip con borde dorado)
+          // pa que el muro principal se distinga de un vistazo
+          const star=esDominante?"★ ":"";
+          const txt=`${star}🐋 ${bid?"COMPRA":"VENTA"} ${fmtP(wll.price)} · ${usdF(wll.usd)}`;
           cx.font="bold 12px Consolas";
           const tw=cx.measureText(txt).width;
           cx.fillStyle="rgba(3,6,12,0.92)";
           cx.fillRect(4, y-19, tw+14, 17);
-          cx.strokeStyle=colLine; cx.lineWidth=1;
+          cx.strokeStyle=esDominante?"rgba(255,212,0,0.85)":colLine; cx.lineWidth=esDominante?1.5:1;
           cx.strokeRect(4, y-19, tw+14, 17);
+          let txX=11;
+          if(esDominante){
+            cx.fillStyle="#ffd400";
+            cx.fillText("★ ", txX, y-6);
+            txX+=cx.measureText("★ ").width;
+          }
           cx.fillStyle=colTxt;
-          cx.fillText(txt, 11, y-6);
+          cx.fillText(txt.slice(star.length), txX, y-6);
         }
         cx.lineWidth=1;
       } else {
