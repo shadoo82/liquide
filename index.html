@@ -111,23 +111,48 @@
     ::-webkit-scrollbar-track { background:#1a1a1a; }
     ::-webkit-scrollbar-thumb { background:#444; border-radius:0; }
     ::-webkit-scrollbar-thumb:hover { background:#555; }
-    .fullscreen-btn { position:absolute; top:5px; right:5px; width:28px; height:28px; background:rgba(0,0,0,0.7); border:1px solid #444; border-radius:3px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center; transition:all 0.2s ease; }
+    /* [AÑADIDO v55] right:80px → queda DENTRO del área de velas, despejando la escala de precio */
+    .fullscreen-btn { position:absolute; top:6px; right:80px; width:28px; height:28px; background:rgba(0,0,0,0.7); border:1px solid #444; border-radius:3px; cursor:pointer; z-index:10; display:flex; align-items:center; justify-content:center; transition:all 0.2s ease; }
     .fullscreen-btn:hover { background:rgba(0,0,0,0.9); border-color:var(--bid-color); transform:scale(1.05); }
     .fullscreen-btn svg { width:14px; height:14px; fill:var(--bid-color); }
     /* [AÑADIDO v23] en fullscreen el header fijo tapaba el botón: reubicado abajo-derecha */
-    .chart-container.fullscreen-mode .fullscreen-btn { top:auto !important; bottom:38px !important; right:75px !important; z-index:10001 !important; }
+    /* [AÑADIDO v55] en maximizado: misma esquina, versión compacta */
+    .chart-container.fullscreen-mode .fullscreen-btn { top:6px !important; bottom:auto !important; right:80px !important;
+        width:22px !important; height:22px !important; opacity:.8; z-index:10002 !important; background:rgba(0,0,0,0.85) !important; }
+    .chart-container.fullscreen-mode .fullscreen-btn:hover { opacity:1; }
+    .chart-container.fullscreen-mode .fullscreen-btn svg { width:10px !important; height:10px !important; }
     /* [AÑADIDO v23] barra flotante de botones MapaLiq en fullscreen */
     #ml-fsbar { display:none; position:absolute; left:50%; transform:translateX(-50%); bottom:6px; z-index:10001; background:rgba(10,14,22,0.92); border:1px solid #2a3a54; border-radius:8px; padding:4px 8px; gap:4px; align-items:center; flex-wrap:wrap; box-shadow:0 4px 16px rgba(0,0,0,0.6); }
     body.fullscreen-active #ml-fsbar { display:flex; }
     /* [AÑADIDO v39] header de fullscreen con TODO centrado como una fila equilibrada */
-    #ml-fsls { display:none; background:rgba(0,0,0,0.35); border:1px solid #2a3a54; border-radius:8px; padding:4px 14px; font-family:Consolas,monospace; font-size:11px; color:#c7d3e3; min-width:250px; max-width:320px; }
+    #ml-fsls { display:none; background:rgba(0,0,0,0.35); border:1px solid #2a3a54; border-radius:8px; padding:5px 14px; font-family:Consolas,monospace; font-size:11px; color:#c7d3e3; min-width:290px; max-width:360px; }
     body.fullscreen-active #ml-fsls { display:block; }
     /* en fullscreen: sin bloques elásticos ni space-between → una fila centrada con separación uniforme */
-    body.fullscreen-active .header-controls { justify-content:center !important; gap:22px !important; }
-    body.fullscreen-active .header-left { flex-grow:0 !important; }
-    body.fullscreen-active .header-center { flex-grow:0 !important; margin:0 !important; }
+    /* [AÑADIDO v56] header maximizado bien repartido: par+precio pegados a la izquierda,
+       reloj y widget en el medio, intervalo/EMA pegados a la derecha */
+    /* [AÑADIDO v59] los bloques centrales y los de la derecha se agrupan en contenedores
+       (#fs-center-group / #fs-right-group). Con izquierda y derecha a flex:1 y el centro fijo,
+       el grupo del medio queda CENTRADO de verdad respecto a la pantalla. */
+    /* [AÑADIDO v60] el agrupado de la v59 descolocó el bloque central en modo NORMAL
+       (el bloque izquierdo crecía y lo empujaba). Mismo reparto en ambos modos:
+       izquierda y derecha con el mismo peso → el centro queda centrado de verdad. */
+    #fs-center-group { display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+    #fs-right-group  { display:flex; align-items:center; gap:6px; flex:1 1 0; justify-content:flex-end; }
+    .header-controls { align-items:center; }
+    .header-controls > .header-left { flex:1 1 0; min-width:0; }
+    body.fullscreen-active .header-controls { justify-content:space-between !important; gap:10px !important;
+        padding-left:16px !important; padding-right:16px !important; align-items:center !important; }
+    body.fullscreen-active .header-left  { flex:1 1 0 !important; margin:0 !important; min-width:0; }
+    body.fullscreen-active #symbol-price-display { margin-left:0 !important; }
+    body.fullscreen-active #fs-center-group { flex:0 0 auto !important; }
+    body.fullscreen-active #fs-right-group  { flex:1 1 0 !important; justify-content:flex-end !important; }
+    /* [AÑADIDO v59] barra de botones del maximizado un poco más grande */
+    #ml-fsbar { padding:6px 12px !important; gap:6px !important; }
+    #ml-fsbar .liquidity-btn { padding:5px 10px !important; font-size:13px !important; }
+    #ml-fsbar select.liquidity-btn { font-size:12px !important; }
+    #ml-fsbar input[type=range] { width:95px !important; height:6px; }
     body.fullscreen-active .interval-selector { margin:0 !important; }
-    .chart-container.fullscreen-mode { position:fixed !important; top:50px !important; left:0 !important; width:100vw !important; height:calc(100vh - 50px) !important; background:#000 !important; z-index:9999 !important; margin:0 !important; padding:0 !important; border:none !important; border-radius:0 !important; }
+    .chart-container.fullscreen-mode { position:fixed !important; top:50px !important; /* [v58] lo recalcula ajustarTopFullscreen */ left:0 !important; width:100vw !important; height:calc(100vh - 50px) !important; background:#000 !important; z-index:9999 !important; margin:0 !important; padding:0 !important; border:none !important; border-radius:0 !important; }
     body.fullscreen-active .hide-when-fullscreen { display:none !important; opacity:0 !important; visibility:hidden !important; height:0 !important; overflow:hidden !important; }
     body.fullscreen-active .header-controls { display:flex !important; position:fixed !important; top:0 !important; left:0 !important; transform:none !important; width:100% !important; height:auto !important; z-index:10000 !important; margin:0 !important; padding:8px 15px !important; background-color:rgba(26,26,26,0.95) !important; border-radius:0 !important; border-bottom:2px solid #333 !important; box-shadow:0 4px 12px rgba(0,0,0,0.7) !important; backdrop-filter:blur(5px); }
     body.fullscreen-active { padding-top:0 !important; overflow:hidden !important; }
@@ -347,6 +372,15 @@
     #ls-long-usd, #ls-short-usd { font-size:12px !important; }
     #real-spread, #real-bid-ask { font-size:13px !important; }
     .imbalance-container { text-align:center !important; }
+
+    /* [AÑADIDO v54] par y precio más grandes en maximizado SIN transform (antes se solapaba
+       con el bloque del reloj porque scale() no ocupa espacio real en el flex) */
+    body.fullscreen-active #symbol-price-display { margin-left:20px !important; margin-right:14px !important; white-space:nowrap; }
+    body.fullscreen-active #symbol-price-display .sym   { font-size:24px !important; font-weight:800 !important; letter-spacing:.5px; }
+    body.fullscreen-active #symbol-price-display .price { font-size:24px !important; font-weight:800 !important; }
+    body.fullscreen-active #symbol-price-display .pct   { font-size:17px !important; font-weight:700 !important; }
+    body.fullscreen-active #market-mode-badge { font-size:12px !important; }
+    body.fullscreen-active .header-center { max-width:280px !important; }
 </style>
   <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
 </head>
@@ -437,9 +471,9 @@
           <div class="stats-row"><span class="stats-label">Muros mayores:</span><span class="stats-value" id="market-spread">0</span></div>
           <div class="stats-row"><span class="stats-label">Precio muros:</span><span class="stats-value" id="best-bid-ask">0 / 0</span></div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;gap:6px;">
-            <span id="short-diff" style="color:#ff5555;font-weight:700;font-size:11px;font-family:Consolas,monospace;">SHORT —</span>
+            <span id="short-diff" style="color:#ff5555;font-weight:700;font-size:11px;font-family:Consolas,monospace;">Oferta (asks) —</span>
             <span id="force-indicator" style="font-size:10px;color:#888;">⚖️</span>
-            <span id="long-diff" style="color:#00ff88;font-weight:700;font-size:11px;font-family:Consolas,monospace;">LONG —</span>
+            <span id="long-diff" style="color:#00ff88;font-weight:700;font-size:11px;font-family:Consolas,monospace;">Demanda (bids) —</span>
           </div>
           <div style="margin-top:4px;height:8px;background:#111;border-radius:4px;overflow:hidden;display:flex;">
             <div id="short-bar" style="height:100%;width:50%;background:#ff5555;transition:width 0.5s;"></div>
@@ -1217,6 +1251,34 @@ function formatAge(milliseconds) {
 // ===================================================
 // HEADER & PRICE UPDATE
 // ===================================================
+// [AÑADIDO v54] El % de 24h venía SOLO del stream @ticker. Si ese WS se cae (se ha visto
+// "ticker: Desconectado"), el precio se seguía actualizando por markPrice pero el cambio se
+// quedaba clavado en 0.00%. Ahora se refresca también por REST cada 30s como garantía.
+window._chg24h = null;
+async function refresh24hChange(){
+    try{
+        const spot = (typeof wsManager!=="undefined" && wsManager && wsManager.useSpot);
+        const url = spot
+            ? `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`
+            : `https://fapi.binance.com/fapi/v1/ticker/24hr?symbol=${symbol}`;
+        const r = await fetch(url);
+        if(!r.ok) return;
+        const d = await r.json();
+        const p = Number(d.priceChangePercent);
+        if(Number.isFinite(p)){
+            window._chg24h = p;
+            const el=document.getElementById('hdr-change');
+            if(el){
+                const up = p>=0;
+                el.textContent = `${up?'▲':'▼'} ${Math.abs(p).toFixed(2)}%`;
+                el.style.color = up?'#4eff78':'#ff5555';
+            }
+        }
+    }catch(e){}
+}
+setInterval(refresh24hChange, 30000);
+setTimeout(refresh24hChange, 2500);
+
 function updateHeaderPrice(price,change24h) {
     const priceEl=document.getElementById('hdr-price'); const changeEl=document.getElementById('hdr-change'); const symbolEl=document.getElementById('hdr-symbol');
     if(!priceEl||!changeEl||!symbolEl)return;
@@ -1227,8 +1289,11 @@ function updateHeaderPrice(price,change24h) {
     priceEl.textContent=`$${price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
     priceEl.classList.remove('up','down');
     if(direction)priceEl.classList.add(direction);
-    const isUp24=change24h>=0;
-    changeEl.textContent=`${isUp24?'▲':'▼'} ${Math.abs(change24h).toFixed(2)}%`;
+    // [AÑADIDO v54] si el ticker no trae cambio (0 o nulo), usar el último valor REST
+    let chg = (Number.isFinite(change24h) && change24h!==0) ? change24h
+            : (Number.isFinite(window._chg24h) ? window._chg24h : (change24h||0));
+    const isUp24=chg>=0;
+    changeEl.textContent=`${isUp24?'▲':'▼'} ${Math.abs(chg).toFixed(2)}%`;
     changeEl.style.color=isUp24?'#4eff78':'#ff5555';
     updateCurrentCandleWithPrice(price);
 }
@@ -1401,15 +1466,24 @@ function updateLiquidityStats() {
     const longBar  = document.getElementById('long-bar');
 
     if (shortEl) {
-        shortEl.textContent = 'SHORT ' + formatUsdt(totalAsk);
+        shortEl.textContent = 'Oferta (asks) ' + formatUsdt(totalAsk);   // [AÑADIDO v53] nombre real: liquidez pasiva de venta
         shortEl.style.opacity = bidWins ? '0.5' : '1';
         shortEl.style.textShadow = bidWins ? 'none' : '0 0 8px #ff5555';
     }
     if (longEl) {
-        longEl.textContent = 'LONG ' + formatUsdt(totalBid);
+        longEl.textContent = 'Demanda (bids) ' + formatUsdt(totalBid);   // [AÑADIDO v53] nombre real: liquidez pasiva de compra
         longEl.style.opacity = bidWins ? '1' : '0.5';
         longEl.style.textShadow = bidWins ? '0 0 8px #00ff88' : 'none';
     }
+    // [AÑADIDO v53] réplica en el widget del modo maximizado
+    try{
+        const fo=document.getElementById('fsod-oferta'), fd=document.getElementById('fsod-demanda');
+        if(fo) fo.textContent=formatUsdt(totalAsk);
+        if(fd) fd.textContent=formatUsdt(totalBid);
+        const fbo=document.getElementById('fsod-bar-oferta'), fbd=document.getElementById('fsod-bar-demanda');
+        if(fbo) fbo.style.width=askW+'%';
+        if(fbd) fbd.style.width=bidW+'%';
+    }catch(_){}
     if (forceEl) {
         const diffAmt = formatUsdt(Math.abs(diff));
         forceEl.textContent = bidWins ? `+${diffAmt} 🟢` : `+${diffAmt} 🔴`;
@@ -1649,7 +1723,7 @@ function changeChartInterval() {
 }function drawSelectedPriceLine(price,isAsk) {
     if(!chart||!candlestickSeries)return;
     const now=Math.floor(Date.now()/1000);
-    const lineSeries=chart.addLineSeries({color:isAsk?'#ff0000':'#00ff00',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
+    const lineSeries=chart.addLineSeries({color:isAsk?'#ff0000':'#00ff00',lineWidth:2,priceLineVisible:false,lastValueVisible:false,autoscaleInfoProvider:()=>null});   // [AÑADIDO v60] fuera del auto-escalado
     lineSeries.setData([{time:now-86400,value:price},{time:now,value:price}]);
     lineSeries.createPriceLine({price,color:isAsk?'#ff0000':'#00ff00',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,title:`${isAsk?'Ask':'Bid'}: ${formatPrice(price)}`});
     selectedPrices.set(price,{series:lineSeries,isAsk}); saveSelectedPrices();
@@ -2073,15 +2147,68 @@ window.savePositionFromRow  = savePositionFromRow;
 // ===================================================
 // FULLSCREEN
 // ===================================================
+// [AÑADIDO v56] El header en fullscreen es fijo (z-index 10000) y ha crecido con el widget y
+// la tipografía grande; el chart arrancaba en 50px fijos, así que el header tapaba la esquina
+// superior del gráfico y con ella el botón de minimizar. Ahora el chart empieza justo debajo
+// del header real, medido en vivo.
+function ajustarTopFullscreen(isFull){
+    const chartSection=document.getElementById('chart-container');
+    const hdr=document.querySelector('.header-controls');
+    if(!chartSection) return;
+    // [AÑADIDO v58] el CSS declara top/height con !important: un estilo inline normal NO gana.
+    // Hay que fijarlos con setProperty(...,'important') o el chart sigue arrancando en 50px
+    // y el header (fixed, z-index 10000) tapa la esquina con el botón de minimizar.
+    if(!isFull){
+        chartSection.style.removeProperty('top');
+        chartSection.style.removeProperty('height');
+        return;
+    }
+    const h=(hdr?hdr.offsetHeight:50)+2;
+    chartSection.style.setProperty('top', h+'px', 'important');
+    chartSection.style.setProperty('height', 'calc(100vh - '+h+'px)', 'important');
+    try{ if(chart) setTimeout(()=>chart.resize(chartSection.offsetWidth, chartSection.offsetHeight),80); }catch(e){}
+}
+window.addEventListener('resize',()=>{
+    const cs=document.getElementById('chart-container');
+    if(cs&&cs.classList.contains('fullscreen-mode')) ajustarTopFullscreen(true);
+});
+
+// [AÑADIDO v59] agrupar los bloques del header (una sola vez) pa poder centrar el del medio
+function agruparHeaderControls(){
+    const hdr=document.querySelector('.header-controls');
+    if(!hdr || document.getElementById('fs-center-group')) return;
+    const center=hdr.querySelector('.header-center');
+    const fsls=document.getElementById('ml-fsls');
+    const interval=hdr.querySelector('.interval-selector');
+    const emaLbl=hdr.querySelector('label[for="ema-period"]');
+    const emaInp=document.getElementById('ema-period');
+    if(center){
+        const g=document.createElement('div'); g.id='fs-center-group';
+        hdr.insertBefore(g, center);
+        g.appendChild(center);
+        if(fsls) g.appendChild(fsls);
+    }
+    if(interval){
+        const r=document.createElement('div'); r.id='fs-right-group';
+        hdr.insertBefore(r, interval);
+        r.appendChild(interval);
+        if(emaLbl) r.appendChild(emaLbl);
+        if(emaInp) r.appendChild(emaInp);
+    }
+}
+document.addEventListener('DOMContentLoaded', ()=>setTimeout(agruparHeaderControls, 1200));
+setTimeout(agruparHeaderControls, 3000);
+
 function setupFullscreenButton() {
     const chartSection=document.getElementById('chart-container'); const fullscreenBtn=document.getElementById('tv-fullscreen-btn');
     if(!chartSection||!fullscreenBtn)return;
     fullscreenBtn.addEventListener('click',()=>{
         const isFull=chartSection.classList.toggle('fullscreen-mode'); document.body.classList.toggle('fullscreen-active',isFull);
+        ajustarTopFullscreen(isFull);   // [AÑADIDO v56]
         fullscreenBtn.innerHTML=isFull?`<svg viewBox="0 0 24 24"><path d="M5 5h5v2H7v3H5V5zm14 0v5h-2V7h-3V5h5zm-5 14h3v-2h2v5h-5v-3zm-4 3H5v-5h2v3h3v2z"/></svg>`:`<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm0-4h2V7h3V5H7v5zm10 7h-3v2h5v-5h-2v3zm-3-7h2V7h3V5h-5v5z"/></svg>`;
         if(chart){setTimeout(()=>{if(isFull)chart.resize(chartSection.offsetWidth,chartSection.offsetHeight);else chart.resize(chartSection.offsetWidth,chartSection.offsetHeight||Math.max(700,Math.round(innerHeight*0.78)));},100);} // [AÑADIDO v22]
     });
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&chartSection.classList.contains('fullscreen-mode')){chartSection.classList.remove('fullscreen-mode');document.body.classList.remove('fullscreen-active');fullscreenBtn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm0-4h2V7h3V5H7v5zm10 7h-3v2h5v-5h-2v3zm-3-7h2V7h3V5h-5v5z"/></svg>`;if(chart)setTimeout(()=>chart.resize(chartSection.offsetWidth,chartSection.offsetHeight||Math.max(700,Math.round(innerHeight*0.78))),100);}}); // [AÑADIDO v22]
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&chartSection.classList.contains('fullscreen-mode')){chartSection.classList.remove('fullscreen-mode');document.body.classList.remove('fullscreen-active');ajustarTopFullscreen(false);fullscreenBtn.innerHTML=`<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm0-4h2V7h3V5H7v5zm10 7h-3v2h5v-5h-2v3zm-3-7h2V7h3V5h-5v5z"/></svg>`;if(chart)setTimeout(()=>chart.resize(chartSection.offsetWidth,chartSection.offsetHeight||Math.max(700,Math.round(innerHeight*0.78))),100);}}); // [AÑADIDO v22]
     window.addEventListener('resize',()=>{if(chart){if(chartSection.classList.contains('fullscreen-mode'))chart.resize(chartSection.offsetWidth,chartSection.offsetHeight);else chart.resize(chartSection.offsetWidth,chartSection.offsetHeight||Math.max(700,Math.round(innerHeight*0.78)));}}); // [AÑADIDO v22]
 }
 
@@ -2106,6 +2233,9 @@ function setupEventListeners() {
         if (!s) return;
         symbol = s.endsWith('USDT') ? s : s + 'USDT';
         try { localStorage.setItem('last_symbol', symbol); } catch(_) {}
+        // [AÑADIDO v54] al cambiar de par, invalidar y recargar el % de 24h
+        window._chg24h = null;
+        try { if (typeof refresh24hChange === 'function') setTimeout(refresh24hChange, 600); } catch(_) {}
         const hdrSym = document.getElementById('hdr-symbol');
         if (hdrSym) hdrSym.textContent = symbol;
         _searchInput.value = '';
@@ -2435,6 +2565,10 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
                     priceLineVisible:  false,
                     lastValueVisible:  false,
                     lineStyle:         lineStyle,
+                    // [AÑADIDO v60] la zona NO participa en el auto-escalado: una orden lejana
+                    // (p.ej. BID en 1,000 con el precio en 1,890) estiraba la escala de 900 a 2250
+                    // y aplastaba las velas contra una línea
+                    autoscaleInfoProvider: () => null,
                 });
 
                 lineSeries.setData([
@@ -2479,7 +2613,7 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
                     } catch(_) { return ''; }
                 })();
 
-                lineSeries.createPriceLine({
+                const _instPL = lineSeries.createPriceLine({   // [AÑADIDO v52] referencia pa ocultar su etiqueta del eje
                     price:             zone.price,
                     color:             `rgba(${baseColor},1)`,
                     lineWidth:         1,
@@ -2499,7 +2633,9 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
 
                 // Guardar referencia para limpiar después
                 if (!window._instChartLines) window._instChartLines = [];
-                window._instChartLines.push({ series: lineSeries, zoneId: zone.id, price: zone.price });
+                window._instChartLines.push({ series: lineSeries, zoneId: zone.id, price: zone.price, priceLine: _instPL });   // [AÑADIDO v52]
+                // [AÑADIDO v52] si el ratón ya está sobre la escala, la nueva zona nace sin etiqueta de eje
+                if (window._overPriceAxis) { try { _instPL.applyOptions({axisLabelVisible:false}); } catch(_){} }
                 // [AÑADIDO v28] respetar el toggle de visibilidad al crear líneas nuevas
                 if (window._instLinesHidden) { try { lineSeries.applyOptions({visible:false}); } catch(_){} }
 
@@ -7237,6 +7373,7 @@ function init() {
             // [AÑADIDO v50] respetar el toggle 📍 Z.Reales: si las líneas están ocultas,
             // tampoco debe salir el popup de la zona (antes seguía apareciendo al pasar el ratón)
             if (window._instLinesHidden) { removeTip(); return; }
+            if (window._overPriceAxis) { removeTip(); return; }   // [AÑADIDO v52] cursor sobre la escala: sin popup
 
             // Si ya hay tooltip para esta zona, NO moverlo (permite hacer clic en botón)
             if (tip && lastZprice === best.price) return;
@@ -8512,6 +8649,26 @@ const MapaLiq = (function(){
     }
     let mx=0,poc=0; for(let r=0;r<R;r++){ if(vp[r]>mx){mx=vp[r];poc=r;} }
     S.vp=vp; S.vpMax=mx||1; S.vpPoc=poc; S.vpBk=bk; S.vpLo=lo;
+    // [AÑADIDO v51] guardar rango alto y nº de velas usadas (pa detectar zoom vertical y avisar de muestra corta)
+    S.vpHi=hiV; S.vpCandles=(i1-i0+1); S.vpAt=Date.now();
+  }
+  // [AÑADIDO v51] el evento de rango visible solo salta con el zoom/pan HORIZONTAL (tiempo).
+  // Al hacer zoom VERTICAL o arrastrar la escala de precio, los buckets del perfil quedaban
+  // calculados sobre el rango de precio anterior → el VRVP parecía "no funcionar".
+  // Aquí se detecta la deriva del rango de precio y se recalcula (máx. 1 vez cada 200ms).
+  function vpCheckPriceRange(){
+    if(!S.vp||!cv) return;
+    if(Date.now()-(S.vpAt||0)<200) return;
+    try{
+      const hpx=cv.clientHeight;
+      const hiNow=candlestickSeries.coordinateToPrice(0);
+      const loNow=candlestickSeries.coordinateToPrice(hpx);
+      if(hiNow==null||loNow==null) return;
+      const spanNow=hiNow-loNow, spanOld=(S.vpHi-S.vpLo)||1;
+      const driftLo=Math.abs(loNow-S.vpLo)/spanNow;
+      const driftSpan=Math.abs(spanNow-spanOld)/spanOld;
+      if(driftLo>0.02||driftSpan>0.02){ computeVP(); }
+    }catch(e){}
   }
 
   /* ---- ZONAS MACRO HTF (port fiel de calcHtfZones + fetchHtf) ---- */
@@ -8792,6 +8949,7 @@ const MapaLiq = (function(){
     }
     // 6) VRVP lateral + POC ámbar
     if(S.on.vp && S.vp){
+      vpCheckPriceRange();   // [AÑADIDO v51] recalcula si cambió el rango de precio (zoom vertical)
       const vpW=Math.round(w*0.10);
       const xR=w-axisPad;
       for(let r=0;r<S.vpRows;r++){
@@ -8807,8 +8965,14 @@ const MapaLiq = (function(){
       if(yPoc!=null){
         cx.strokeStyle="rgba(255,193,7,0.8)"; cx.setLineDash([8,4]); cx.lineWidth=1;
         cx.beginPath(); cx.moveTo(0,yPoc); cx.lineTo(xR,yPoc); cx.stroke(); cx.setLineDash([]);
-        cx.fillStyle="#ffc107"; cx.font="bold 10px Consolas";
-        cx.fillText(`POC ${fmtP(pocP)}`, xR-92, yPoc-4);
+        // [AÑADIDO v51] la etiqueta dice sobre cuántas velas está calculado el perfil:
+        // con pocas velas el POC es ruido, no una zona de volumen fiable
+        const nv=S.vpCandles||0;
+        const pocTxt=`POC ${fmtP(pocP)} · ${nv} velas`+(nv<30?" ⚠ muestra corta":"");
+        cx.font="bold 11px Consolas";
+        const pw=cx.measureText(pocTxt).width;
+        cx.fillStyle=nv<30?"#ff9c2e":"#ffc107";
+        cx.fillText(pocTxt, Math.max(6, xR-pw-6), yPoc-6);
       }
     }
     // 7) [AÑADIDO v26] OBJETIVOS numerados EN EL CHART: con VALOR y trazo raya-punto propio
@@ -9046,7 +9210,13 @@ const MapaLiq = (function(){
         +`<div style="height:7px;border-radius:3px;overflow:hidden;background:#1a2233;margin:3px 0;display:flex;">`
         +`<div id="fsls-bar-long" style="background:linear-gradient(90deg,#1a9e5c,#26d67c);width:50%;transition:width .5s;"></div>`
         +`<div id="fsls-bar-short" style="background:linear-gradient(90deg,#ff5b6e,#c22536);width:50%;transition:width .5s;"></div></div>`
-        +`<div style="display:flex;justify-content:space-between;font-size:10px;"><span>Largo <b id="fsls-long-usd" style="color:#26d67c;">—</b></span><span>Corto <b id="fsls-short-usd" style="color:#ff5b6e;">—</b></span></div>`;
+        +`<div style="display:flex;justify-content:space-between;font-size:10px;"><span>Largo <b id="fsls-long-usd" style="color:#26d67c;">—</b></span><span>Corto <b id="fsls-short-usd" style="color:#ff5b6e;">—</b></span></div>`
+        // [AÑADIDO v53] liquidez PASIVA del libro (lo que espera) — distinto del flujo agresor de arriba
+        +`<div style="font-size:9px;color:#7d8ca5;text-transform:uppercase;letter-spacing:.5px;margin:6px 0 3px;border-top:1px solid #223349;padding-top:5px;">Liquidez del libro · órdenes en espera</div>`
+        +`<div style="display:flex;justify-content:space-between;font-size:10px;"><span>Oferta (asks) <b id="fsod-oferta" style="color:#ff5b6e;">—</b></span><span>Demanda (bids) <b id="fsod-demanda" style="color:#26d67c;">—</b></span></div>`
+        +`<div style="height:7px;border-radius:3px;overflow:hidden;background:#1a2233;margin-top:3px;display:flex;">`
+        +`<div id="fsod-bar-oferta" style="background:linear-gradient(90deg,#c22536,#ff5b6e);width:50%;transition:width .5s;"></div>`
+        +`<div id="fsod-bar-demanda" style="background:linear-gradient(90deg,#26d67c,#1a9e5c);width:50%;transition:width .5s;"></div></div>`;
       // [AÑADIDO v38] va DENTRO del header (tras el bloque central) → centrado y ordenado en fullscreen
       const hdr=document.querySelector(".header-controls");
       const hcenter=hdr?hdr.querySelector(".header-center"):null;
@@ -9138,19 +9308,49 @@ const MapaLiq = (function(){
     });
     cont.addEventListener("mouseleave", ()=>{ tip.style.display="none"; });
     setInterval(syncSize, 3000);   // respaldo: recolocación periódica (cambios de par recrean el chart)
-    // [AÑADIDO v22] rueda sobre la ESCALA DE PRECIO (franja derecha) → zoom HORIZONTAL del gráfico
+    // [AÑADIDO v52] ZONA DE LA ESCALA DE PRECIO (franja derecha):
+    //   · al entrar con el ratón se ocultan las etiquetas de zona del eje (estorbaban al hacer zoom)
+    //   · la rueda hace zoom VERTICAL (antes era horizontal)
+    function axisW(){
+      try{ const pw=chart.priceScale("right").width(); if(pw>10) return pw+6; }catch(e){}
+      return 70;
+    }
+    function sobreEje(clientX){
+      const rc=cont.getBoundingClientRect();
+      return (clientX-rc.left) >= rc.width-axisW();
+    }
+    function setEtiquetasEje(visibles){
+      (window._instChartLines||[]).forEach(l=>{
+        try{ if(l.priceLine) l.priceLine.applyOptions({axisLabelVisible:visibles}); }catch(_){}
+      });
+    }
+    window._overPriceAxis=false;
+    cont.addEventListener("mousemove", e=>{
+      const dentro=sobreEje(e.clientX);
+      if(dentro!==window._overPriceAxis){
+        window._overPriceAxis=dentro;
+        setEtiquetasEje(!dentro);          // dentro del eje → etiquetas fuera
+        if(dentro) document.querySelectorAll(".zone-hover-tip").forEach(t=>t.remove());
+      }
+    });
+    cont.addEventListener("mouseleave", ()=>{
+      if(window._overPriceAxis){ window._overPriceAxis=false; setEtiquetasEje(true); }
+    });
+    // zoom VERTICAL: se simula el arrastre nativo de la escala de precio de Lightweight Charts
+    // (la librería no expone API pa fijar el rango de precio, pero sí escala al arrastrar el eje)
     cont.addEventListener("wheel", e=>{
       if(typeof chart==="undefined"||!chart) return;
-      const rc=cont.getBoundingClientRect();
-      const x=e.clientX-rc.left;
-      if(x < rc.width-70) return;            // solo si el puntero está sobre el eje de precio
+      if(!sobreEje(e.clientX)) return;     // solo con el puntero sobre el eje de precio
       e.preventDefault(); e.stopPropagation();
       try{
-        const ts=chart.timeScale();
-        const lr=ts.getVisibleLogicalRange(); if(!lr) return;
-        const f=e.deltaY>0?1.18:0.85;        // rueda abajo = alejar, rueda arriba = acercar
-        const c=(lr.from+lr.to)/2, half=(lr.to-lr.from)/2*f;
-        ts.setVisibleLogicalRange({from:c-half, to:c+half});
+        const el=document.elementFromPoint(e.clientX, e.clientY);
+        if(!el) return;
+        const dy=(e.deltaY>0?1:-1)*26;     // rueda abajo = comprimir, arriba = expandir
+        const mk=(type,y,buttons)=>new MouseEvent(type,{bubbles:true,cancelable:true,
+          clientX:e.clientX, clientY:y, button:0, buttons:buttons});
+        el.dispatchEvent(mk("mousedown", e.clientY, 1));
+        el.dispatchEvent(mk("mousemove", e.clientY+dy, 1));
+        el.dispatchEvent(mk("mouseup",   e.clientY+dy, 0));
       }catch(err){}
     }, {passive:false});
     tPanel=document.createElement("div");
