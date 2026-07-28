@@ -426,10 +426,10 @@
         </div>
         <div class="stats-column spread-stats">
           <!-- [AÑADIDO v30] spread REAL del tope del libro (antes se mostraba la distancia entre muros como "spread") -->
-          <div class="stats-row"><span class="stats-label">Spread real:</span><span class="stats-value" id="real-spread" style="color:#00ff88;">—</span></div>
+          <div class="stats-row" title="Mejor bid vs mejor ask del libro. En pares muy líquidos se clava en 1 tick (el mínimo que permite el par) y solo se abre en momentos de estrés."><span class="stats-label">Spread real:</span><span class="stats-value" id="real-spread" style="color:#00ff88;">—</span></div>
           <div class="stats-row"><span class="stats-label">Top libro:</span><span class="stats-value" id="real-bid-ask">—</span></div>
           <!-- [AÑADIDO v32] ratio taker Largo/Corto (estilo Coinglass) desde el volumen real de las velas -->
-          <div class="stats-row"><span class="stats-label">Largo/Corto <select class="ls-win-sel" onchange="MapaLiq.setLSWindow(this.value)" style="background:#131a28;color:#8ea4c4;border:1px solid #2a3a54;border-radius:4px;font-size:9px;padding:0 2px;"><option value="auto">Auto TF</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240" selected>4h</option><option value="720">12h</option><option value="1440">24h</option></select><span id="ls-window" style="display:none;">4h</span>:</span><span class="stats-value"><span id="ls-long" style="color:#26d67c;">—</span> / <span id="ls-short" style="color:#ff5b6e;">—</span> <span style="color:#556;font-size:9px;">·</span> <span id="ls-long-usd" style="color:#26d67c;font-size:10px;">—</span><span style="color:#556;font-size:9px;">/</span><span id="ls-short-usd" style="color:#ff5b6e;font-size:10px;">—</span></span></div>
+          <div class="stats-row"><span class="stats-label">Largo/Corto <select class="ls-win-sel" onchange="MapaLiq.setLSWindow(this.value)" style="background:#131a28;color:#8ea4c4;border:1px solid #2a3a54;border-radius:4px;font-size:9px;padding:0 2px;"><option value="auto" selected>Auto TF</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="720">12h</option><option value="1440">24h</option></select><span id="ls-window" style="display:none;">4h</span>:</span><span class="stats-value"><span id="ls-long" style="color:#26d67c;">—</span> / <span id="ls-short" style="color:#ff5b6e;">—</span> <span style="color:#556;font-size:9px;">·</span> <span id="ls-long-usd" style="color:#26d67c;font-size:10px;">—</span><span style="color:#556;font-size:9px;">/</span><span id="ls-short-usd" style="color:#ff5b6e;font-size:10px;">—</span></span></div>
           <div style="height:6px;border-radius:3px;overflow:hidden;background:#1a2233;margin:2px 0 4px 0;display:flex;">
             <div id="ls-bar-long" style="background:linear-gradient(90deg,#1a9e5c,#26d67c);width:50%;transition:width .5s;"></div>
             <div id="ls-bar-short" style="background:linear-gradient(90deg,#ff5b6e,#c22536);width:50%;transition:width .5s;"></div>
@@ -7234,6 +7234,9 @@ function init() {
             });
 
             if (!best) { removeTip(); return; }
+            // [AÑADIDO v50] respetar el toggle 📍 Z.Reales: si las líneas están ocultas,
+            // tampoco debe salir el popup de la zona (antes seguía apareciendo al pasar el ratón)
+            if (window._instLinesHidden) { removeTip(); return; }
 
             // Si ya hay tooltip para esta zona, NO moverlo (permite hacer clic en botón)
             if (tip && lastZprice === best.price) return;
@@ -7246,6 +7249,7 @@ function init() {
             const icon  = best.tier==='WHALE'?'🐋':best.tier==='INST'?'🏛️':'📌';
 
             tip = document.createElement('div');
+            tip.className = 'zone-hover-tip';   // [AÑADIDO v50]
             tip.style.cssText = [
                 'position:fixed',
                 'left:'+(e.clientX+8)+'px',
@@ -8192,6 +8196,8 @@ window._instLinesHidden = (localStorage.getItem("instLinesHidden")==="1");
 window.toggleInstLines = function(){
   window._instLinesHidden = !window._instLinesHidden;
   (window._instChartLines||[]).forEach(l=>{ try{ l.series.applyOptions({visible:!window._instLinesHidden}); }catch(_){} });
+  // [AÑADIDO v50] cerrar el popup de zona que estuviera abierto al apagar
+  if(window._instLinesHidden){ document.querySelectorAll('.zone-hover-tip').forEach(t=>t.remove()); }
   localStorage.setItem("instLinesHidden", window._instLinesHidden?"1":"0");
   document.querySelectorAll("[data-ml-inst]").forEach(b=>{
     b.classList.toggle("ml-on", !window._instLinesHidden);
@@ -8712,7 +8718,7 @@ const MapaLiq = (function(){
         const lbl=`🔥 ${short?"SHORT":"LONG"} ${fmtP(g.price)} · ${g.fuentes} señales`;
         cx.font="bold 12px Consolas";
         const lblW=cx.measureText(lbl).width;
-        const lblX=Math.max(8, (w-axisPad)/2 - lblW/2);
+        const lblX=Math.max(8, (w-axisPad)/2 - lblW/2);   // [AÑADIDO v49] centrada: los muros vuelven a la izquierda
         cx.fillStyle="rgba(3,6,12,0.78)";
         cx.fillRect(lblX-8, y-10, lblW+16, 19);
         cx.fillStyle=short?"rgba(255,150,160,0.98)":"rgba(130,245,180,0.98)";
@@ -8755,24 +8761,27 @@ const MapaLiq = (function(){
           cx.setLineDash([]);
           // etiqueta sobre chip oscuro (legible encima del heatmap)
           // [AÑADIDO v36] etiquetas de muro legibles: fuente 12px bold, chip con más contraste y padding
-          // [AÑADIDO v45] la ★ del muro dominante va en AMARILLO (y el chip con borde dorado)
-          // pa que el muro principal se distinga de un vistazo
-          const star=esDominante?"★ ":"";
-          const txt=`${star}🐋 ${bid?"COMPRA":"VENTA"} ${fmtP(wll.price)} · ${usdF(wll.usd)}`;
+          // [AÑADIDO v49] etiqueta EN LA IZQUIERDA de siempre, pero clavada a la altura de la
+          // línea: con textBaseline="middle" el centro del texto coincide exacto con el nivel
+          // (antes se calculaba a ojo con la baseline y quedaba un par de píxeles descuadrado).
           cx.font="bold 12px Consolas";
-          const tw=cx.measureText(txt).width;
-          cx.fillStyle="rgba(3,6,12,0.92)";
-          cx.fillRect(4, y-19, tw+14, 17);
-          cx.strokeStyle=esDominante?"rgba(255,212,0,0.85)":colLine; cx.lineWidth=esDominante?1.5:1;
-          cx.strokeRect(4, y-19, tw+14, 17);
-          let txX=11;
+          cx.textBaseline="middle";
+          const cuerpo=`🐋 ${bid?"COMPRA":"VENTA"} ${fmtP(wll.price)} · ${usdF(wll.usd)}`;
+          const starW=esDominante?cx.measureText("★ ").width:0;
+          const cuerpoW=cx.measureText(cuerpo).width;
+          const tw=starW+cuerpoW;
+          const x0=11;
+          cx.fillStyle="rgba(3,6,12,0.94)";
+          cx.fillRect(x0-7, y-10, tw+14, 20);
+          cx.strokeStyle=esDominante?"rgba(255,212,0,0.9)":colLine; cx.lineWidth=esDominante?1.5:1;
+          cx.strokeRect(x0-7, y-10, tw+14, 20);
           if(esDominante){
             cx.fillStyle="#ffd400";
-            cx.fillText("★ ", txX, y-6);
-            txX+=cx.measureText("★ ").width;
+            cx.fillText("★ ", x0, y);
           }
           cx.fillStyle=colTxt;
-          cx.fillText(txt.slice(star.length), txX, y-6);
+          cx.fillText(cuerpo, x0+starW, y);
+          cx.textBaseline="alphabetic";   // restaurar pa el resto de capas
         }
         cx.lineWidth=1;
       } else {
@@ -8904,7 +8913,7 @@ const MapaLiq = (function(){
   let _ls5m=[], _ls5mAt=0, _ls5mSym="";
   // [AÑADIDO v42] ventana en MINUTOS ("auto" = sigue la TF del chart). Migración: valores
   // antiguos guardados en horas (<=24) se convierten a minutos.
-  S.lsWindow = SAVED.lsWindow||240;
+  S.lsWindow = (SAVED.lsWindow!=null) ? SAVED.lsWindow : "auto";   // [AÑADIDO v47] Auto TF por defecto
   if(typeof S.lsWindow==="number" && S.lsWindow<=24) S.lsWindow*=60;
   function lsWindowMin(){
     if(S.lsWindow==="auto"){
