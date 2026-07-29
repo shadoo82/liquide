@@ -125,7 +125,10 @@
     #ml-fsbar { display:none; position:absolute; left:50%; transform:translateX(-50%); bottom:6px; z-index:10001; background:rgba(10,14,22,0.92); border:1px solid #2a3a54; border-radius:8px; padding:4px 8px; gap:4px; align-items:center; flex-wrap:wrap; box-shadow:0 4px 16px rgba(0,0,0,0.6); }
     body.fullscreen-active #ml-fsbar { display:flex; }
     /* [AÑADIDO v39] header de fullscreen con TODO centrado como una fila equilibrada */
-    #ml-fsls { display:none; background:rgba(0,0,0,0.35); border:1px solid #2a3a54; border-radius:8px; padding:5px 14px; font-family:Consolas,monospace; font-size:11px; color:#c7d3e3; min-width:290px; max-width:360px; }
+    #ml-fsls { display:none; background:rgba(0,0,0,0.35); border:1px solid #2a3a54; border-radius:8px; padding:7px 22px; font-family:Consolas,monospace; font-size:11px; color:#c7d3e3; min-width:470px; max-width:540px; box-sizing:border-box; }   /* [AÑADIDO v62] más ancho aún */
+    #ml-fsls > div { white-space:nowrap; }
+    /* [AÑADIDO v62] el panel del reloj también más ancho pa equilibrar el diseño */
+    body.fullscreen-active .header-center { max-width:none !important; min-width:340px !important; padding:5px 20px !important; }
     body.fullscreen-active #ml-fsls { display:block; }
     /* en fullscreen: sin bloques elásticos ni space-between → una fila centrada con separación uniforme */
     /* [AÑADIDO v56] header maximizado bien repartido: par+precio pegados a la izquierda,
@@ -1483,6 +1486,19 @@ function updateLiquidityStats() {
         const fbo=document.getElementById('fsod-bar-oferta'), fbd=document.getElementById('fsod-bar-demanda');
         if(fbo) fbo.style.width=askW+'%';
         if(fbd) fbd.style.width=bidW+'%';
+        // [AÑADIDO v61] diferencial + círculo en el centro de la barra del widget maximizado
+        const fdiff=document.getElementById('fsod-diff');
+        if(fdiff){
+            fdiff.textContent = '+'+formatUsdt(Math.abs(diff))+(bidWins?' 🟢':' 🔴');
+            fdiff.style.color = bidWins ? '#00ff88' : '#ff5555';
+        }
+        // [AÑADIDO v63] resaltar el lado dominante también aquí
+        if(fo&&fd){
+            fo.style.textShadow = bidWins ? 'none' : '0 0 8px rgba(255,91,110,.85)';
+            fo.parentElement.style.opacity = bidWins ? '0.55' : '1';
+            fd.style.textShadow = bidWins ? '0 0 8px rgba(38,214,124,.85)' : 'none';
+            fd.parentElement.style.opacity = bidWins ? '1' : '0.55';
+        }
     }catch(_){}
     if (forceEl) {
         const diffAmt = formatUsdt(Math.abs(diff));
@@ -2163,6 +2179,7 @@ function ajustarTopFullscreen(isFull){
         chartSection.style.removeProperty('height');
         return;
     }
+    try{ agruparHeaderControls(); }catch(e){}   // [AÑADIDO v62] consolidar controles antes de medir
     const h=(hdr?hdr.offsetHeight:50)+2;
     chartSection.style.setProperty('top', h+'px', 'important');
     chartSection.style.setProperty('height', 'calc(100vh - '+h+'px)', 'important');
@@ -2176,7 +2193,20 @@ window.addEventListener('resize',()=>{
 // [AÑADIDO v59] agrupar los bloques del header (una sola vez) pa poder centrar el del medio
 function agruparHeaderControls(){
     const hdr=document.querySelector('.header-controls');
-    if(!hdr || document.getElementById('fs-center-group')) return;
+    if(!hdr) return;
+    // [AÑADIDO v62] si los grupos ya existen, recoger controles que se hayan quedado sueltos
+    // (por diferencias de tiempo entre la carga del módulo y el agrupado)
+    const yaCentro=document.getElementById('fs-center-group');
+    const yaDcha=document.getElementById('fs-right-group');
+    if(yaCentro||yaDcha){
+        const fs2=document.getElementById('ml-fsls');
+        if(yaCentro&&fs2&&fs2.parentElement===hdr) yaCentro.appendChild(fs2);
+        if(yaDcha){
+            hdr.querySelectorAll(':scope > .interval-selector, :scope > label[for="ema-period"], :scope > #ema-period')
+               .forEach(el=>yaDcha.appendChild(el));
+        }
+        return;
+    }
     const center=hdr.querySelector('.header-center');
     const fsls=document.getElementById('ml-fsls');
     const interval=hdr.querySelector('.interval-selector');
@@ -9129,6 +9159,28 @@ const MapaLiq = (function(){
     setT("fsls-short-pct", ps.toFixed(2)+"%");
     setT("fsls-long-usd", usdF(buy));
     setT("fsls-short-usd", usdF(sellUsd));
+    // [AÑADIDO v63] diferencia neta con círculo + resalte visual del lado dominante
+    const domLargo = pl>=50;
+    setT("fsls-diff", "+"+usdF(Math.abs(buy-sellUsd))+(domLargo?" 🟢":" 🔴"));
+    const dEl=document.getElementById("fsls-diff");
+    if(dEl) dEl.style.color = domLargo ? "#26d67c" : "#ff5b6e";
+    const lEl=document.getElementById("fsls-long-pct"), sEl=document.getElementById("fsls-short-pct");
+    if(lEl&&sEl){
+        lEl.style.opacity     = domLargo ? "1" : "0.45";
+        lEl.style.fontSize    = domLargo ? "16px" : "12px";
+        lEl.style.textShadow  = domLargo ? "0 0 10px rgba(38,214,124,.85)" : "none";
+        sEl.style.opacity     = domLargo ? "0.45" : "1";
+        sEl.style.fontSize    = domLargo ? "12px" : "16px";
+        sEl.style.textShadow  = domLargo ? "none" : "0 0 10px rgba(255,91,110,.85)";
+    }
+    // mismo resalte en la fila del panel normal
+    const nl=document.getElementById("ls-long"), ns=document.getElementById("ls-short");
+    if(nl&&ns){
+        nl.style.opacity    = domLargo ? "1" : "0.5";
+        nl.style.textShadow = domLargo ? "0 0 8px rgba(38,214,124,.8)" : "none";
+        ns.style.opacity    = domLargo ? "0.5" : "1";
+        ns.style.textShadow = domLargo ? "none" : "0 0 8px rgba(255,91,110,.8)";
+    }
     setT("ls-long-usd", usdF(buy));     // [AÑADIDO v44] importes también en la fila del panel normal
     setT("ls-short-usd", usdF(sellUsd));
     const bl=document.getElementById("fsls-bar-long"); if(bl) bl.style.width=pl.toFixed(1)+"%";
@@ -9206,15 +9258,24 @@ const MapaLiq = (function(){
       const fsls=document.createElement("div");
       fsls.id="ml-fsls";
       fsls.innerHTML=`<div style="font-size:9px;color:#7d8ca5;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Proporción Largo/Corto · Vol. Compra/Venta <select class="ls-win-sel" onchange="MapaLiq.setLSWindow(this.value)" style="background:#131a28;color:#8ea4c4;border:1px solid #2a3a54;border-radius:4px;font-size:9px;padding:0 2px;"><option value="auto">Auto TF</option><option value="5">5m</option><option value="15">15m</option><option value="30">30m</option><option value="60">1h</option><option value="240">4h</option><option value="720">12h</option><option value="1440">24h</option></select><span id="fsls-window" style="display:none;">4h</span></div>`
-        +`<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px;"><span id="fsls-long-pct" style="color:#26d67c;">—</span><span id="fsls-short-pct" style="color:#ff5b6e;">—</span></div>`
+        // [AÑADIDO v63] marcador central con círculo + diferencia neta, y resalte del lado dominante
+        +`<div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;gap:12px;">`
+        +`<span id="fsls-long-pct" style="color:#26d67c;transition:all .3s;">—</span>`
+        +`<span id="fsls-diff" style="font-size:11px;font-weight:700;">—</span>`
+        +`<span id="fsls-short-pct" style="color:#ff5b6e;transition:all .3s;">—</span></div>`
         +`<div style="height:7px;border-radius:3px;overflow:hidden;background:#1a2233;margin:3px 0;display:flex;">`
         +`<div id="fsls-bar-long" style="background:linear-gradient(90deg,#1a9e5c,#26d67c);width:50%;transition:width .5s;"></div>`
         +`<div id="fsls-bar-short" style="background:linear-gradient(90deg,#ff5b6e,#c22536);width:50%;transition:width .5s;"></div></div>`
         +`<div style="display:flex;justify-content:space-between;font-size:10px;"><span>Largo <b id="fsls-long-usd" style="color:#26d67c;">—</b></span><span>Corto <b id="fsls-short-usd" style="color:#ff5b6e;">—</b></span></div>`
         // [AÑADIDO v53] liquidez PASIVA del libro (lo que espera) — distinto del flujo agresor de arriba
         +`<div style="font-size:9px;color:#7d8ca5;text-transform:uppercase;letter-spacing:.5px;margin:6px 0 3px;border-top:1px solid #223349;padding-top:5px;">Liquidez del libro · órdenes en espera</div>`
-        +`<div style="display:flex;justify-content:space-between;font-size:10px;"><span>Oferta (asks) <b id="fsod-oferta" style="color:#ff5b6e;">—</b></span><span>Demanda (bids) <b id="fsod-demanda" style="color:#26d67c;">—</b></span></div>`
-        +`<div style="height:7px;border-radius:3px;overflow:hidden;background:#1a2233;margin-top:3px;display:flex;">`
+        // [AÑADIDO v62] el diferencial y su círculo van ARRIBA, en medio de Oferta y Demanda
+        // (sobre la barra quedaba ilegible)
+        +`<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;gap:14px;">`
+        +`<span>Oferta (asks) <b id="fsod-oferta" style="color:#ff5b6e;">—</b></span>`
+        +`<span id="fsod-diff" style="font-weight:700;font-size:11px;">—</span>`
+        +`<span>Demanda (bids) <b id="fsod-demanda" style="color:#26d67c;">—</b></span></div>`
+        +`<div style="height:8px;border-radius:3px;overflow:hidden;background:#1a2233;margin-top:3px;display:flex;">`
         +`<div id="fsod-bar-oferta" style="background:linear-gradient(90deg,#c22536,#ff5b6e);width:50%;transition:width .5s;"></div>`
         +`<div id="fsod-bar-demanda" style="background:linear-gradient(90deg,#26d67c,#1a9e5c);width:50%;transition:width .5s;"></div></div>`;
       // [AÑADIDO v38] va DENTRO del header (tras el bloque central) → centrado y ordenado en fullscreen
