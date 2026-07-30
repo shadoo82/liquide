@@ -641,6 +641,7 @@ setInterval(()=>{
 // ===================================================
 // VARIABLES Y CONFIGURACIÓN GLOBAL
 // ===================================================
+console.log('%c🔖 ORDERBOOK v74 — FIX ZONAS INSTITUCIONALES', 'background:#26d67c;color:#000;font-weight:bold;padding:2px 8px;border-radius:4px;');
 // Cargar símbolo desde localStorage (compatible con file://)
 let symbol = "BTCUSDT";
 try {
@@ -1739,7 +1740,7 @@ function changeChartInterval() {
 }function drawSelectedPriceLine(price,isAsk) {
     if(!chart||!candlestickSeries)return;
     const now=Math.floor(Date.now()/1000);
-    const lineSeries=chart.addLineSeries({color:isAsk?'#ff0000':'#00ff00',lineWidth:2,priceLineVisible:false,lastValueVisible:false,autoscaleInfoProvider:()=>null});   // [AÑADIDO v60] fuera del auto-escalado
+    const lineSeries=chart.addLineSeries({color:isAsk?'#ff0000':'#00ff00',lineWidth:2,priceLineVisible:false,lastValueVisible:false});   // [FIX] sin autoscaleInfoProvider
     lineSeries.setData([{time:now-86400,value:price},{time:now,value:price}]);
     lineSeries.createPriceLine({price,color:isAsk?'#ff0000':'#00ff00',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,title:`${isAsk?'Ask':'Bid'}: ${formatPrice(price)}`});
     selectedPrices.set(price,{series:lineSeries,isAsk}); saveSelectedPrices();
@@ -2517,12 +2518,21 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
         const finalScore = Math.round(Math.min(100, score + roundBonus));
         const isRoundNumber = roundBonus > 0;
 
+        // [FIX] "armed": la zona solo puede mitigarse si al detectarla el precio estaba al
+        // lado correcto (ask por encima del precio / bid por debajo). Si nace del lado
+        // contrario, ya está atravesada y NO debe contar como mitigación nueva.
+        const _mpArm = markPriceFutures || 0;
+        const armed = cluster.side === 'ask'
+            ? (_mpArm > 0 && _mpArm <  cluster.price)
+            : (_mpArm > 0 && _mpArm >  cluster.price);
+
         return {
             ...cluster,
             score:     finalScore,
             roundBonus,
             isRoundNumber,
             tier,
+            armed,
             mitigated: false,
             savedAt:   null,
             id:        `zone_${cluster.side}_${Math.round(cluster.price)}_${Date.now()}`,
@@ -2595,10 +2605,8 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
                     priceLineVisible:  false,
                     lastValueVisible:  false,
                     lineStyle:         lineStyle,
-                    // [AÑADIDO v60] la zona NO participa en el auto-escalado: una orden lejana
-                    // (p.ej. BID en 1,000 con el precio en 1,890) estiraba la escala de 900 a 2250
-                    // y aplastaba las velas contra una línea
-                    autoscaleInfoProvider: () => null,
+                    // [FIX] eliminado autoscaleInfoProvider: en Lightweight Charts 3.8 esa opción
+                    // podía impedir que la serie se dibujara → zonas invisibles.
                 });
 
                 lineSeries.setData([
@@ -2675,7 +2683,7 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
         });
 
         institutionalZones = zones;
-        console.log(`🏛️ ${zones.length} zonas institucionales dibujadas`);
+        console.log(`🏛️ ZONAS → recibidas:${zones.length} lineas:${(window._instChartLines||[]).length} ocultas:${!!window._instLinesHidden} mitigadas_en_memoria:${mitigatedZones.length} mark:${markPriceFutures}`);
     }
 
     function clearInstitutionalChartLines() {
@@ -2704,6 +2712,10 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
 
         institutionalZones.forEach(zone => {
             if (zone.mitigated) return;
+            // [FIX] solo mitigar zonas "armadas" (el precio estaba al lado correcto al nacer).
+            // Sin esto, las zonas del lado contrario se auto-mitigaban al instante y su precio
+            // quedaba bloqueado para siempre en mitigatedZones → las zonas dejaban de salir.
+            if (zone.armed === false) return;
 
             const dist = Math.abs(currentPrice - zone.price) / zone.price;
 
@@ -2724,6 +2736,9 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
                 zone.mitigatedPrice = currentPrice;
 
                 mitigatedZones.push({ ...zone });
+                // [FIX] tope de 15: la lista de mitigadas es un filtro de ±0.25% por entrada;
+                // sin tope acababa cubriendo todo el rango operativo y no salía ninguna zona
+                while (mitigatedZones.length > 15) mitigatedZones.shift();
 
                 // — Actualizar en el historial guardado —
                 updateZoneStatusInHistory(zone.id, 'mitigated', currentPrice);
@@ -8359,7 +8374,11 @@ function startWatchlistMonitor() {
    redibujado por eventos + 1 Hz (no 60fps). Grid en Float32 (mitad de RAM).
    ============================================================================ */
 // [AÑADIDO v28] toggle de las líneas de zonas institucionales REALES del chart
-window._instLinesHidden = (localStorage.getItem("instLinesHidden")==="1");
+// [FIX] las zonas SIEMPRE arrancan visibles. Antes el estado "oculto" se guardaba en
+// localStorage: al recargar nacían ocultas pero el botón aparecía encendido, así que el
+// primer clic las volvía a esconder y parecía que el botón no funcionaba.
+window._instLinesHidden = false;
+try{ localStorage.setItem("instLinesHidden","0"); }catch(_){}
 window.toggleInstLines = function(){
   window._instLinesHidden = !window._instLinesHidden;
   (window._instChartLines||[]).forEach(l=>{ try{ l.series.applyOptions({visible:!window._instLinesHidden}); }catch(_){} });
@@ -9127,7 +9146,9 @@ const MapaLiq = (function(){
     }catch(e){}
   }
   function setLSWindow(v){
-    S.lsWindow=(v==="auto")?"auto":+v;   // [AÑADIDO v42] try{ const cur=JSON.parse(localStorage.getItem("mapaLiqOB")||"{}"); cur.lsWindow=S.lsWindow; localStorage.setItem("mapaLiqOB", JSON.stringify(cur)); }catch(e){}
+    S.lsWindow=(v==="auto")?"auto":+v;
+    // [FIX] este try/catch había quedado dentro de un comentario y la ventana no se guardaba
+    try{ const cur=JSON.parse(localStorage.getItem("mapaLiqOB")||"{}"); cur.lsWindow=S.lsWindow; localStorage.setItem("mapaLiqOB", JSON.stringify(cur)); }catch(e){}
     document.querySelectorAll(".ls-win-sel").forEach(s=>{ if(s.value!==String(S.lsWindow)) s.value=String(S.lsWindow); });
     updateLongShort();
   }
