@@ -407,6 +407,28 @@
         <span id="hdr-price" class="price">$0.00</span>
         <span id="hdr-change" class="pct">▲ 0.00%</span>
       </div>
+      <!-- [AÑADIDO v76] Interés Abierto en la barra superior (antes estaba abajo en las estadísticas) -->
+      <div id="oi-header-block" title="Open Interest de Binance Futures del par activo. Coinglass agrega todos los exchanges, por eso su cifra es mayor."
+           style="display:flex;flex-direction:column;justify-content:center;gap:1px;background:rgba(0,0,0,0.32);border:1px solid #4a4a4a;border-radius:7px;padding:5px 16px;font-family:Consolas,monospace;margin-left:16px;">
+        <span style="font-size:11px;color:#8fa2bd;text-transform:uppercase;letter-spacing:.6px;line-height:1.2;font-weight:600;">
+          Interés Abierto
+          <span id="oi-dot" title="Estado del dato" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#7d8ca5;margin-left:5px;vertical-align:middle;"></span>
+          <!-- [AÑADIDO v80] periodo del OI, independiente del chart -->
+          <select class="oi-per-sel" onchange="MapaLiq.setOIPeriod(this.value)"
+                  title="Granularidad del histórico de OI. Binance no ofrece menos de 5m; 'Vivo' muestrea cada 15s en local."
+                  style="background:#131a28;color:#8ea4c4;border:1px solid #2a3a54;border-radius:4px;font-size:10px;padding:0 3px;margin-left:6px;font-family:Consolas,monospace;">
+            <option value="auto">Auto TF</option><option value="live">Vivo 15s</option>
+            <option value="5m">5m</option><option value="15m">15m</option><option value="30m">30m</option>
+            <option value="1h">1h</option><option value="4h">4h</option>
+          </select>
+        </span>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <b id="oi-value" style="font-size:21px;color:#e6edf6;letter-spacing:.3px;">—</b>
+          <span id="oi-1h"  style="font-size:13px;font-weight:700;">1h —</span>
+          <span id="oi-24h" style="font-size:13px;font-weight:700;">24h —</span>
+          <svg id="oi-spark" width="104" height="26"></svg>
+        </div>
+      </div>
     </div>
     <div class="header-center">
       <p class="header-info-line" id="compact-timestamp"></p>
@@ -473,6 +495,7 @@
           </div>
           <div class="stats-row"><span class="stats-label">Muros mayores:</span><span class="stats-value" id="market-spread">0</span></div>
           <div class="stats-row"><span class="stats-label">Precio muros:</span><span class="stats-value" id="best-bid-ask">0 / 0</span></div>
+
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;gap:6px;">
             <span id="short-diff" style="color:#ff5555;font-weight:700;font-size:11px;font-family:Consolas,monospace;">Oferta (asks) —</span>
             <span id="force-indicator" style="font-size:10px;color:#888;">⚖️</span>
@@ -525,7 +548,8 @@
             <option value="100000">Muro ≥ $100K</option><option value="250000">Muro ≥ $250K</option>
             <option value="500000">Muro ≥ $500K</option><option value="1000000">Muro ≥ $1M</option>
             <option value="2000000">Muro ≥ $2M</option><option value="5000000">Muro ≥ $5M</option>
-            <option value="10000000">Muro ≥ $10M</option><option value="25000000">Muro ≥ $25M</option>
+            <option value="10000000">Muro ≥ $10M</option><option value="15000000">Muro ≥ $15M</option>
+            <option value="20000000">Muro ≥ $20M</option><option value="25000000">Muro ≥ $25M</option>
             <option value="50000000">Muro ≥ $50M</option>
           </select>
           <!-- [AÑADIDO v22] slider gamma: resaltar/desvanecer heatmap -->
@@ -641,7 +665,7 @@ setInterval(()=>{
 // ===================================================
 // VARIABLES Y CONFIGURACIÓN GLOBAL
 // ===================================================
-console.log('%c🔖 ORDERBOOK v74 — FIX ZONAS INSTITUCIONALES', 'background:#26d67c;color:#000;font-weight:bold;padding:2px 8px;border-radius:4px;');
+console.log('%c🔖 ORDERBOOK v80 — OI por temporalidad', 'background:#26d67c;color:#000;font-weight:bold;padding:2px 8px;border-radius:4px;');
 // Cargar símbolo desde localStorage (compatible con file://)
 let symbol = "BTCUSDT";
 try {
@@ -2571,10 +2595,17 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
         const now      = Math.floor(Date.now() / 1000);
         const timeBack = now - INST_CONFIG.lineHoursBack * 3600;
 
+        let _fuera = 0;
+        const _ref = (window.candlesData && window.candlesData.length)
+            ? window.candlesData[window.candlesData.length-1].close
+            : 0;
         zones.forEach((zone, idx) => {
             try {
                 const isBid   = zone.side === 'bid';
                 const usdt    = zone.totalUsdt || 0;
+                // [FIX v76] zonas a más del 5% no se dibujan: estiraban la escala y aplastaban
+                // las velas. Referencia = cierre de la última vela (siempre del par correcto).
+                if (_ref > 0 && Math.abs(zone.price - _ref) / _ref > 0.05) { _fuera++; return; }
 
                 // ── Grosor y opacidad según VOLUMEN (no solo tier) ──
                 // >100M (WHALE): línea muy gruesa y brillante
@@ -2683,7 +2714,7 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
         });
 
         institutionalZones = zones;
-        console.log(`🏛️ ZONAS → recibidas:${zones.length} lineas:${(window._instChartLines||[]).length} ocultas:${!!window._instLinesHidden} mitigadas_en_memoria:${mitigatedZones.length} mark:${markPriceFutures}`);
+        console.log(`🏛️ ZONAS → recibidas:${zones.length} pintadas:${(window._instChartLines||[]).length} fuera_5%:${_fuera} ocultas:${!!window._instLinesHidden} mitigadas:${mitigatedZones.length} ref:${_ref}`);
     }
 
     function clearInstitutionalChartLines() {
@@ -8427,16 +8458,62 @@ const MapaLiq = (function(){
   }
 
   /* ---- OPEN INTEREST (port fiel de fetchOI): peso extra a velas con OI nuevo ---- */
-  async function fetchOI(){
+  // [AÑADIDO v80] PERIODO DEL OI seleccionable e independiente del chart.
+  // Límite de Binance: openInterestHist solo admite 5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h, 1d
+  // (no hay 1m ni 3m). Antes, con el chart en 1m/3m el mapeo caía a 1h → granularidad horaria.
+  // Ahora esos casos usan 5m, que es el grano más fino que existe. Para ir por debajo está el
+  // modo "Vivo", que muestrea /fapi/v1/openInterest cada 15s y construye la serie localmente.
+  S.oiPeriod = SAVED.oiPeriod || "auto";
+  function oiPeriodStr(){
+    if(S.oiPeriod!=="auto" && S.oiPeriod!=="live") return S.oiPeriod;
     const iv=(typeof currentInterval!=="undefined")?currentInterval:"15m";
-    const oiPeriod={"5m":"5m","15m":"15m","30m":"30m","1h":"1h","2h":"2h","4h":"4h","1d":"1d"}[iv]||"1h";
+    return {"1m":"5m","3m":"5m","5m":"5m","15m":"15m","30m":"30m",
+            "1h":"1h","2h":"2h","4h":"4h","1d":"1d"}[iv] || "5m";
+  }
+  function setOIPeriod(v){
+    S.oiPeriod=v;
+    try{ const cur=JSON.parse(localStorage.getItem("mapaLiqOB")||"{}"); cur.oiPeriod=v; localStorage.setItem("mapaLiqOB", JSON.stringify(cur)); }catch(e){}
+    document.querySelectorAll(".oi-per-sel").forEach(s=>{ if(s.value!==v) s.value=v; });
+    S.lastOi=0; fetchOI().then(updateOI);   // refresco inmediato con el periodo nuevo
+  }
+  async function fetchOI(){
+    const oiPeriod=oiPeriodStr();
+    S.oiPeriodUsed=oiPeriod;
     try{
       const r=await fetch(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=${oiPeriod}&limit=500`);
       if(!r.ok) return;
       const raw=await r.json(); if(!raw.length) return;
-      S.oiMap={t:raw.map(o=>o.timestamp), v:raw.map(o=>+o.sumOpenInterest)};
+      // [AÑADIDO v75] sumOpenInterestValue = OI en USDT (lo que muestra Coinglass);
+      // sumOpenInterest va en el activo base y lo sigue usando el modelo de liquidez
+      S.oiMap={t:raw.map(o=>o.timestamp), v:raw.map(o=>+o.sumOpenInterest), usd:raw.map(o=>+o.sumOpenInterestValue)};
     }catch(e){}
   }
+  // [AÑADIDO v77] OI EN VIVO: openInterestHist devuelve el histórico con la granularidad
+  // del intervalo (5m, 15m, 1h...) y se refrescaba cada 5 min → el valor llegaba con retraso.
+  // /fapi/v1/openInterest da el OI ACTUAL al instante. Se consulta cada 15s y se convierte a
+  // USDT con el precio en vivo. El histórico se sigue usando pa el % y el mini-gráfico.
+  let _oiLive=null, _oiLiveAt=0;
+  async function fetchOILive(){
+    if(Date.now()-_oiLiveAt<15000) return;
+    _oiLiveAt=Date.now();
+    try{
+      const r=await fetch(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`);
+      if(!r.ok) return;
+      const d=await r.json();
+      const oi=+d.openInterest;
+      if(Number.isFinite(oi)&&oi>0){
+        _oiLive={oi, sym:symbol, ts:Date.now()};
+        // [AÑADIDO v80] serie local de 15s: permite ver el OI por debajo del mínimo de 5m
+        const px=livePrice();
+        if(px>0){
+          if(!S.oiLiveSer||S.oiLiveSerSym!==symbol){ S.oiLiveSer=[]; S.oiLiveSerSym=symbol; }
+          S.oiLiveSer.push({t:Date.now(), usd:oi*px});
+          while(S.oiLiveSer.length>480) S.oiLiveSer.shift();   // ~2 h de muestras
+        }
+      }
+    }catch(e){}
+  }
+
   function applyOI(){
     if(!S.oiMap){ S.candles.forEach(k=>k.oiUp=1); return; }
     const {t:oiT, v:oiV}=S.oiMap;
@@ -9073,7 +9150,9 @@ const MapaLiq = (function(){
     if(sig!==S.sig){ // cambió par/TF/nº velas → recomputar
       const parChanged=!S.sig.startsWith(symbol+"|");
       S.sig=sig;
-      if(parChanged){ S.bookTracked=[]; S.bookWalls=[]; S.bookBin=null; S.oiMap=null; S.htfZones=[]; }
+      if(parChanged){ S.bookTracked=[]; S.bookWalls=[]; S.bookBin=null; S.oiMap=null; S.htfZones=[]; S.oiLiveSer=[]; }
+      // [AÑADIDO v80] en modo Auto el periodo del OI depende de la TF: si cambió, recargar
+      if(S.oiPeriod==="auto" && S.oiPeriodUsed && S.oiPeriodUsed!==oiPeriodStr()){ S.lastOi=0; }
       if(now-S.lastOi>300000||!S.oiMap){ S.lastOi=now; fetchOI().then(()=>{ recomputeAll(); }); }
       if(now-S.lastHtf>300000||parChanged){ S.lastHtf=now; fetchHtf().then(requestDraw); }
       recomputeAll();
@@ -9081,11 +9160,95 @@ const MapaLiq = (function(){
       S.lastCompute=now;
       recomputeAll();
     }
+    // [AÑADIDO v75] el OI se refrescaba solo cuando cambiaba la firma; ahora también
+    // por su cuenta cada 5 min, así el widget nunca se queda con datos viejos
+    if(now-S.lastOi>300000){ S.lastOi=now; fetchOI().then(updateOI); }
     fetchBook();       // barato: lee los Maps ya en memoria
+    fetchOILive();     // [AÑADIDO v77] OI actual cada 15s
     updateTargets();
+    updateOI();        // [AÑADIDO v75]
     updateLongShort(); // [AÑADIDO v32]
     updateRealSpread(); // [AÑADIDO v44]
     requestDraw();
+  }
+
+  // [AÑADIDO v75] INTERÉS ABIERTO (Open Interest) estilo Coinglass.
+  // Dato 100% real del endpoint oficial openInterestHist de Binance Futures, que el módulo
+  // ya consulta para el modelo de liquidez. Se muestra el valor en USDT, el cambio de 24h
+  // y un mini-gráfico de la evolución. Ojo: es SOLO Binance; Coinglass agrega todos los
+  // exchanges, así que la cifra es menor que la suya (y es la relevante si operas aquí).
+  function sparkline(el, arr, color){
+    if(!el || !arr || arr.length<2) return;
+    const w=+el.getAttribute("width"), h=+el.getAttribute("height");
+    let mn=Infinity, mx=-Infinity;
+    for(const v of arr){ if(v<mn)mn=v; if(v>mx)mx=v; }
+    const rg=(mx-mn)||1, n=arr.length, pts=[];
+    for(let i=0;i<n;i++){
+      const x=1+(i/(n-1))*(w-2);
+      const y=h-2-((arr[i]-mn)/rg)*(h-4);
+      pts.push(x.toFixed(1)+","+y.toFixed(1));
+    }
+    el.innerHTML=`<polyline fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" points="${pts.join(" ")}"/>`;
+  }
+  function updateOI(){
+    const oi=S.oiMap;
+    if(!oi || !oi.usd || oi.usd.length<2) return;
+    const v=oi.usd, t=oi.t;
+    const price=livePrice();
+    // [AÑADIDO v77] valor EN VIVO si lo tenemos (OI actual × precio actual); si no, último
+    // punto del histórico como respaldo
+    const vivo = (_oiLive && _oiLive.sym===symbol && price>0) ? _oiLive.oi*price : null;
+    const last = vivo || v[v.length-1];
+    if(!Number.isFinite(last)||last<=0) return;
+    const cambioDesde=(ms)=>{
+      const target=t[t.length-1]-ms;
+      let idx=0, bd=Infinity;
+      for(let i=0;i<t.length;i++){ const d=Math.abs(t[i]-target); if(d<bd){ bd=d; idx=i; } }
+      if(Math.abs(t[t.length-1]-t[idx]) < ms*0.6) return null;
+      const prev=v[idx];
+      return (Number.isFinite(prev)&&prev>0) ? ((last-prev)/prev*100) : null;
+    };
+    // [AÑADIDO v80] el cambio CORTO es el de UN periodo exacto (último punto vs anterior),
+    // así "5m +0.12%" significa literalmente el cambio de los últimos 5 minutos.
+    // En modo Vivo se calcula sobre la serie local de 15s con ventana de 1 minuto.
+    const modoVivo = (S.oiPeriod==="live");
+    let cCorto=null, lblCorto=S.oiPeriodUsed||"5m";
+    if(modoVivo && S.oiLiveSer && S.oiLiveSer.length>4){
+      const ser=S.oiLiveSer, ult=ser[ser.length-1].usd;
+      const objetivo=ser[ser.length-1].t-60000;
+      let ix=0, bd2=Infinity;
+      for(let i=0;i<ser.length;i++){ const d=Math.abs(ser[i].t-objetivo); if(d<bd2){bd2=d; ix=i;} }
+      const ant=ser[ix].usd;
+      if(ant>0 && Math.abs(ser[ser.length-1].t-ser[ix].t)>30000){ cCorto=(ult-ant)/ant*100; }
+      lblCorto="1m";
+    } else if(v.length>=2){
+      const ant=v[v.length-2];
+      if(Number.isFinite(ant)&&ant>0) cCorto=(v[v.length-1]-ant)/ant*100;
+    }
+    const c1h  = cCorto;
+    const c24h = cambioDesde(86400000);
+    const colOf=c=>(c==null?"#7d8ca5":(c>=0?"#26d67c":"#ff5b6e"));
+    const txtOf=(c,lbl)=>(c==null?lbl+" —":lbl+" "+(c>=0?"+":"")+c.toFixed(2)+"%");
+    const LC=lblCorto;   // [AÑADIDO v80] etiqueta del cambio corto = periodo real usado
+    const txtV="$"+(last>=1e9?(last/1e9).toFixed(2)+"B":last>=1e6?(last/1e6).toFixed(2)+"M":(last/1e3).toFixed(0)+"K");
+    const serie=v.slice(-70).filter(Number.isFinite);
+    const set=(id,txt,color)=>{ const e=document.getElementById(id); if(e){ e.textContent=txt; if(color) e.style.color=color; } };
+    set("oi-value", txtV, "#e6edf6");   set("fsoi-value", txtV, "#e6edf6");
+    set("oi-1h",  txtOf(c1h,LC),  colOf(c1h));
+    set("oi-24h", txtOf(c24h,"24h"), colOf(c24h));
+    set("fsoi-1h",  txtOf(c1h,LC),  colOf(c1h));
+    set("fsoi-24h", txtOf(c24h,"24h"), colOf(c24h));
+    // punto verde = valor en vivo (≤15s); gris = solo histórico disponible
+    const dot=document.getElementById("oi-dot");
+    if(dot){ dot.style.background = vivo?"#26d67c":"#7d8ca5";
+             dot.title = vivo?("OI en vivo · actualizado hace "+Math.round((Date.now()-_oiLive.ts)/1000)+"s")
+                            :"Sin dato en vivo, mostrando histórico"; }
+    const colSpark=colOf(c24h!=null?c24h:c1h);
+    // [AÑADIDO v80] en modo Vivo el mini-gráfico usa la serie local de 15s (mucho más fina)
+    const serieDibujo = (modoVivo && S.oiLiveSer && S.oiLiveSer.length>3)
+        ? S.oiLiveSer.slice(-90).map(x=>x.usd) : serie;
+    sparkline(document.getElementById("oi-spark"),   serieDibujo, colSpark);
+    sparkline(document.getElementById("fsoi-spark"), serieDibujo, colSpark);
   }
 
   // [AÑADIDO v44] Spread real con doble fuente: el libro en memoria (_fullBook) y, si aún no
@@ -9270,7 +9433,8 @@ const MapaLiq = (function(){
         +`<select class="liquidity-btn ml-usd-sel" onchange="MapaLiq.setMinUsd(this.value)" title="Muro mínimo">`
         +`<option value="100000">≥$100K</option><option value="250000">≥$250K</option><option value="500000">≥$500K</option>`
         +`<option value="1000000">≥$1M</option><option value="2000000">≥$2M</option><option value="5000000">≥$5M</option>`
-        +`<option value="10000000">≥$10M</option><option value="25000000">≥$25M</option><option value="50000000">≥$50M</option></select>`
+        +`<option value="10000000">≥$10M</option><option value="15000000">≥$15M</option>`
+        +`<option value="20000000">≥$20M</option><option value="25000000">≥$25M</option><option value="50000000">≥$50M</option></select>`
         +`<input type="range" class="ml-gamma-sl" min="1" max="3" step="0.1" value="${S.gamma}" style="width:70px;accent-color:#37c0ff;cursor:pointer;" oninput="MapaLiq.setGamma(this.value)" title="Desvanecer heatmap">`;
       cont.appendChild(bar);
       const c2=bar.querySelector(".ml-conf-sel"); if(c2) c2.value=S.confMode;
@@ -9298,7 +9462,17 @@ const MapaLiq = (function(){
         +`<span>Demanda (bids) <b id="fsod-demanda" style="color:#26d67c;">—</b></span></div>`
         +`<div style="height:8px;border-radius:3px;overflow:hidden;background:#1a2233;margin-top:3px;display:flex;">`
         +`<div id="fsod-bar-oferta" style="background:linear-gradient(90deg,#c22536,#ff5b6e);width:50%;transition:width .5s;"></div>`
-        +`<div id="fsod-bar-demanda" style="background:linear-gradient(90deg,#26d67c,#1a9e5c);width:50%;transition:width .5s;"></div></div>`;
+        +`<div id="fsod-bar-demanda" style="background:linear-gradient(90deg,#26d67c,#1a9e5c);width:50%;transition:width .5s;"></div></div>`
+        // [AÑADIDO v75] Interés Abierto con mini-gráfico
+        +`<div style="font-size:9px;color:#7d8ca5;text-transform:uppercase;letter-spacing:.5px;margin:6px 0 3px;border-top:1px solid #223349;padding-top:5px;">Interés abierto · Binance `
+        +`<select class="oi-per-sel" onchange="MapaLiq.setOIPeriod(this.value)" style="background:#131a28;color:#8ea4c4;border:1px solid #2a3a54;border-radius:4px;font-size:9px;padding:0 2px;">`
+        +`<option value="auto">Auto TF</option><option value="live">Vivo 15s</option><option value="5m">5m</option>`
+        +`<option value="15m">15m</option><option value="30m">30m</option><option value="1h">1h</option><option value="4h">4h</option></select></div>`
+        +`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">`
+        +`<span><b id="fsoi-value" style="font-size:19px;color:#e6edf6;">—</b>`
+        +` <span id="fsoi-1h" style="font-size:12px;font-weight:700;">1h —</span>`
+        +` <span id="fsoi-24h" style="font-size:12px;font-weight:700;">24h —</span></span>`
+        +`<svg id="fsoi-spark" width="140" height="30"></svg></div>`;
       // [AÑADIDO v38] va DENTRO del header (tras el bloque central) → centrado y ordenado en fullscreen
       const hdr=document.querySelector(".header-controls");
       const hcenter=hdr?hdr.querySelector(".header-center"):null;
@@ -9471,6 +9645,7 @@ const MapaLiq = (function(){
     const us=document.getElementById("ml-usd"); if(us) us.value=String(S.bookMinUsd);
     const gs=document.getElementById("ml-gamma"); if(gs) gs.value=String(S.gamma);   // [AÑADIDO v22]
     document.querySelectorAll(".ls-win-sel").forEach(s=>s.value=String(S.lsWindow));   // [AÑADIDO v41]
+    document.querySelectorAll(".oi-per-sel").forEach(s=>s.value=String(S.oiPeriod));   // [AÑADIDO v80]
     // [AÑADIDO v28] reflejar estado guardado del toggle de zonas inst
     if(window._instLinesHidden) document.querySelectorAll("[data-ml-inst]").forEach(b=>b.classList.remove("ml-on"));
     // sincronizar con el chart cuando exista
@@ -9509,7 +9684,7 @@ const MapaLiq = (function(){
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 
-  return { toggle, setConf, setMinUsd, setGamma, setLSWindow, _state:S };   // [AÑADIDO v41]
+  return { toggle, setConf, setMinUsd, setGamma, setLSWindow, setOIPeriod, _state:S };   // [AÑADIDO v80]
 })();
 /* ======================== [FIN AÑADIDO MAPA-LIQ] ======================== */
 </script>
