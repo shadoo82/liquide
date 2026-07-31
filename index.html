@@ -384,6 +384,88 @@
     body.fullscreen-active #symbol-price-display .pct   { font-size:17px !important; font-weight:700 !important; }
     body.fullscreen-active #market-mode-badge { font-size:12px !important; }
     body.fullscreen-active .header-center { max-width:280px !important; }
+
+    /* ============ [AÑADIDO v82] BARRA DE CONTROLES RESPONSIVE ============
+       En pantallas estrechas los botones desbordaban, "Muy grande:" se partía en dos
+       líneas y el slider del heatmap quedaba cortado por el borde derecho. */
+    .liquidity-controls-stats { flex-wrap:wrap !important; gap:6px !important;
+        align-items:center !important; justify-content:flex-start !important; }
+    .liquidity-controls-stats > div { display:flex !important; flex-wrap:wrap !important;
+        gap:5px !important; align-items:center !important; }
+    .liquidity-thresholds-stats { flex:0 0 auto !important; flex-wrap:nowrap !important; }
+    .liquidity-thresholds-stats label { white-space:nowrap !important; font-size:11px !important; }
+    .liquidity-thresholds-stats input { width:72px !important; }
+    /* el grupo "resaltar ▬▬ desvanecer" viaja junto y nunca se corta */
+    #ml-gamma { flex:0 0 auto; }
+    /* las alertas flotantes no deben taparse con la botonera */
+    .alert-container { bottom:46px !important; right:10px !important; max-width:230px !important; }
+
+    @media (max-width:1750px){
+      .liquidity-btn { padding:2px 6px !important; font-size:9.5px !important; }
+      .liquidity-thresholds-stats input { width:62px !important; }
+      #ml-gamma { width:64px !important; }
+    }
+    @media (max-width:1450px){
+      .liquidity-btn { padding:2px 5px !important; font-size:9px !important; }
+      .liquidity-thresholds-stats label { font-size:10px !important; }
+      .liquidity-thresholds-stats input { width:54px !important; }
+      #ml-gamma { width:54px !important; }
+      #oi-header-block { padding:4px 10px !important; margin-left:10px !important; }
+      #oi-header-block #oi-value { font-size:17px !important; }
+      #oi-spark { width:70px !important; }
+      .header-center { min-width:180px !important; font-size:10px !important; }
+    }
+    @media (max-width:1200px){
+      .liquidity-btn { font-size:8.5px !important; padding:2px 4px !important; }
+      #oi-header-block #oi-1h, #oi-header-block #oi-24h { display:none; }
+      #oi-spark { display:none; }
+    }
+    /* ============ [FIN AÑADIDO v82] ============ */
+
+    /* [AÑADIDO v84] El OI se queda SOLO en la barra superior (se quitó del widget de
+       Largo/Corto por duplicado). En maximizado se muestra en versión compacta para que
+       no empuje ni se solape con el bloque del reloj. */
+    body.fullscreen-active #oi-header-block { display:flex !important; padding:4px 12px !important;
+        margin-left:0 !important; flex:0 0 auto !important; align-self:stretch !important;
+        justify-content:center !important; }
+    body.fullscreen-active #oi-header-block #oi-value { font-size:16px !important; }
+    body.fullscreen-active #oi-header-block #oi-1h,
+    body.fullscreen-active #oi-header-block #oi-24h { font-size:11px !important; }
+    body.fullscreen-active #oi-spark { width:64px !important; height:20px !important; }
+    /* protección extra: los bloques del header no se montan unos sobre otros */
+    body.fullscreen-active .header-left { min-width:0 !important; overflow:hidden !important; }
+    body.fullscreen-active #fs-center-group { flex-shrink:0 !important; }
+
+    /* [AÑADIDO v86] Los tres bloques del centro con el MISMO tamaño en maximizado:
+       el del reloj (órdenes procesadas) y el de Interés Abierto comparten ancho y alto
+       exactos, para que la barra quede uniforme. */
+    body.fullscreen-active .header-center,
+    body.fullscreen-active #oi-header-block {
+        width:330px !important; min-width:330px !important; max-width:330px !important;
+        height:76px !important; box-sizing:border-box !important;
+        display:flex !important; flex-direction:column !important;
+        justify-content:center !important; align-items:center !important;
+        gap:2px !important; padding:6px 14px !important;
+        background:rgba(0,0,0,0.32) !important; border:1px solid #4a4a4a !important;
+        border-radius:7px !important; margin:0 !important;
+    }
+    /* el widget de Largo/Corto también alineado a esa altura mínima */
+    body.fullscreen-active #ml-fsls { align-self:center !important; }
+    /* contenido del bloque OI centrado dentro de su caja */
+    body.fullscreen-active #oi-header-block > div { justify-content:center !important; }
+    body.fullscreen-active #oi-header-block #oi-value { font-size:19px !important; }
+    body.fullscreen-active #oi-spark { width:76px !important; height:22px !important; }
+
+    /* [AÑADIDO v87] garantía de alineación: los tres bloques centrados en el mismo eje
+       vertical y con caja idéntica (el inline style pierde frente a estos !important) */
+    body.fullscreen-active #fs-center-group { align-items:center !important; gap:12px !important; }
+    body.fullscreen-active .header-center,
+    body.fullscreen-active #oi-header-block {
+        align-self:center !important;
+        flex:0 0 330px !important;
+        line-height:1.25 !important;
+    }
+    body.fullscreen-active .header-center p { margin:0 !important; }
 </style>
   <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
 </head>
@@ -419,7 +501,8 @@
                   style="background:#131a28;color:#8ea4c4;border:1px solid #2a3a54;border-radius:4px;font-size:10px;padding:0 3px;margin-left:6px;font-family:Consolas,monospace;">
             <option value="auto">Auto TF</option><option value="live">Vivo 15s</option>
             <option value="5m">5m</option><option value="15m">15m</option><option value="30m">30m</option>
-            <option value="1h">1h</option><option value="4h">4h</option>
+            <option value="1h">1h</option><option value="2h">2h</option><option value="4h">4h</option>
+            <option value="6h">6h</option><option value="12h">12h</option><option value="1d">1d</option>
           </select>
         </span>
         <div style="display:flex;align-items:center;gap:12px;">
@@ -540,6 +623,7 @@
           <button class="liquidity-btn" id="ml-macro" data-ml="macro" onclick="MapaLiq.toggle('macro',this)" title="Zonas de temporalidad mayor (4h/1d)">🟣 Macro</button>
           <button class="liquidity-btn" id="ml-targets" data-ml="targets" onclick="MapaLiq.toggle('targets',this)" title="Panel de objetivos: lo que el precio busca, por prioridad">🎯 Objetivos</button>
           <button class="liquidity-btn ml-on" data-ml-inst onclick="toggleInstLines()" title="Ocultar líneas de zonas institucionales reales">📍 Z.Reales</button><!-- [AÑADIDO v28] -->
+
           <select id="ml-conf" class="liquidity-btn ml-conf-sel" onchange="MapaLiq.setConf(this.value)" title="Confluencia mínima de las zonas de calor">
             <option value="3">Confl: las 3</option><option value="2">Confl: 2 de 3</option>
             <option value="poc">Confl: +POC</option><option value="macro">Confl: +Macro</option><option value="off">Confl: off</option>
@@ -553,9 +637,11 @@
             <option value="50000000">Muro ≥ $50M</option>
           </select>
           <!-- [AÑADIDO v22] slider gamma: resaltar/desvanecer heatmap -->
-          <span style="font-size:9px;color:#888;margin-left:4px;">resaltar</span>
-          <input id="ml-gamma" class="ml-gamma-sl" type="range" min="1" max="3" step="0.1" style="width:80px;vertical-align:middle;accent-color:#37c0ff;cursor:pointer;" oninput="MapaLiq.setGamma(this.value)" title="Desvanece las celdas débiles del heatmap">
-          <span style="font-size:9px;color:#888;">desvanecer</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;white-space:nowrap;">
+            <span style="font-size:9px;color:#888;">resaltar</span>
+            <input id="ml-gamma" class="ml-gamma-sl" type="range" min="1" max="3" step="0.1" style="width:80px;vertical-align:middle;accent-color:#37c0ff;cursor:pointer;" oninput="MapaLiq.setGamma(this.value)" title="Desvanece las celdas débiles del heatmap">
+            <span style="font-size:9px;color:#888;">desvanecer</span>
+          </span>
           <!-- [FIN AÑADIDO MAPA-LIQ] -->
           
                     <button class="liquidity-btn" id="tg-config-btn"
@@ -665,7 +751,7 @@ setInterval(()=>{
 // ===================================================
 // VARIABLES Y CONFIGURACIÓN GLOBAL
 // ===================================================
-console.log('%c🔖 ORDERBOOK v80 — OI por temporalidad', 'background:#26d67c;color:#000;font-weight:bold;padding:2px 8px;border-radius:4px;');
+console.log('%c🔖 ORDERBOOK v102 — auditado', 'background:#26d67c;color:#000;font-weight:bold;padding:2px 8px;border-radius:4px;');
 // Cargar símbolo desde localStorage (compatible con file://)
 let symbol = "BTCUSDT";
 try {
@@ -1462,8 +1548,25 @@ function updateProcessedCounters() {
     scheduleTableUpdate();
 }
 function updateLiquidityStats() {
-    const totalAsk = futuresAsksData.reduce((s,o)=>s+o.usdt,0);
-    const totalBid = futuresBidsData.reduce((s,o)=>s+o.usdt,0);
+    // [AÑADIDO v102] AUDITORÍA: "Liquidez Asks/Bids" sumaba solo las 50 órdenes mayores,
+    // no el libro. Ahora se calcula sobre el libro COMPLETO (miles de niveles) y solo se
+    // recurre al top-50 si el libro aún no está sincronizado.
+    let totalAsk = 0, totalBid = 0, grandesAsk = 0, grandesBid = 0, libroOk = false;
+    try {
+        const fb = window._fullBook;
+        if (fb && fb.bids.size > 20 && fb.asks.size > 20) {
+            for (const [p, q] of fb.asks) { const u = p*q; totalAsk += u; if (u >= LARGE_ORDER_THRESHOLD) grandesAsk++; }
+            for (const [p, q] of fb.bids) { const u = p*q; totalBid += u; if (u >= LARGE_ORDER_THRESHOLD) grandesBid++; }
+            libroOk = true;
+        }
+    } catch(_) {}
+    if (!libroOk) {
+        totalAsk = futuresAsksData.reduce((s,o)=>s+o.usdt,0);
+        totalBid = futuresBidsData.reduce((s,o)=>s+o.usdt,0);
+        grandesAsk = futuresAsksData.filter(o=>o.usdt>=LARGE_ORDER_THRESHOLD).length;
+        grandesBid = futuresBidsData.filter(o=>o.usdt>=LARGE_ORDER_THRESHOLD).length;
+    }
+    window._liqFuente = libroOk ? 'libro completo' : 'top-50 (respaldo)';
     const total    = totalAsk + totalBid || 1;
     const bidPct   = (totalBid / total * 100).toFixed(1);
     const askPct   = (totalAsk / total * 100).toFixed(1);
@@ -1478,8 +1581,8 @@ function updateLiquidityStats() {
     document.getElementById('bid-pct').textContent  = bidPct + '%';
     document.getElementById('top-ask-level').textContent = topAsk.price ? formatPrice(topAsk.price) + ' · ' + formatUsdt(topAsk.usdt) : '—';
     document.getElementById('top-bid-level').textContent = topBid.price ? formatPrice(topBid.price) + ' · ' + formatUsdt(topBid.usdt) : '—';
-    document.getElementById('large-asks-count').textContent = futuresAsksData.filter(o=>o.usdt>=LARGE_ORDER_THRESHOLD).length;
-    document.getElementById('large-bids-count').textContent = futuresBidsData.filter(o=>o.usdt>=LARGE_ORDER_THRESHOLD).length;
+    document.getElementById('large-asks-count').textContent = grandesAsk;   // [AÑADIDO v102] del libro completo
+    document.getElementById('large-bids-count').textContent = grandesBid;
 
     // Diferencia SHORT vs LONG en el centro
     const diff     = totalBid - totalAsk;
@@ -1534,7 +1637,17 @@ function updateLiquidityStats() {
     if (longBar)  longBar.style.width  = bidW + '%';
 }
 function updateOrderBookImbalance() {
-    const totalBidLiquidity=futuresBidsData.reduce((s,o)=>s+o.usdt,0); const totalAskLiquidity=futuresAsksData.reduce((s,o)=>s+o.usdt,0);
+    // [AÑADIDO v102] el desequilibrio también se medía solo con el top-50; ahora libro completo
+    let totalBidLiquidity=0, totalAskLiquidity=0, _ok=false;
+    try{
+        const fb=window._fullBook;
+        if(fb && fb.bids.size>20 && fb.asks.size>20){
+            for(const [p,q] of fb.asks) totalAskLiquidity += p*q;
+            for(const [p,q] of fb.bids) totalBidLiquidity += p*q;
+            _ok=true;
+        }
+    }catch(_){}
+    if(!_ok){ totalBidLiquidity=futuresBidsData.reduce((s,o)=>s+o.usdt,0); totalAskLiquidity=futuresAsksData.reduce((s,o)=>s+o.usdt,0); }
     const totalLiquidity=totalBidLiquidity+totalAskLiquidity;
     if(totalLiquidity>0){
         const imbalance=((totalBidLiquidity-totalAskLiquidity)/totalLiquidity)*100;
@@ -1702,10 +1815,11 @@ async function loadHistoricalKlines() {
         }
         // Solo auto-fit en primera carga (candlesData vacío antes)
         // Si el usuario ya tiene una vista, mantenerla
-        if (_isFirstLoad) {
+        // [AÑADIDO v101] encuadre en la primera carga y siempre que se cambie de temporalidad
+        if (_isFirstLoad || window._forzarEncuadre) {
             _isFirstLoad = false;
-            chart.applyOptions({ rightPriceScale: { autoScale: true } });
-            chart.timeScale().fitContent();
+            window._forzarEncuadre = false;
+            encuadrarPorDefecto();
         }
         setTimeout(startRealtimePriceLine, 600);  // línea precio + age vela
         // Actualizar análisis SMC con las nuevas velas
@@ -1727,7 +1841,23 @@ function calculateEMA(data,period) {
     else{let sma=0;for(let i=0;i<period;i++)sma+=data[i].close;let ema=sma/period;emaData.push({time:data[period-1].time,value:ema});for(let i=period;i<data.length;i++){ema=(data[i].close*k)+(ema*(1-k));emaData.push({time:data[i].time,value:ema});}}
     return emaData;
 }
-function autoScaleChart(){if(chart)chart.timeScale().fitContent();}
+// [AÑADIDO v101] ENCUADRE POR DEFECTO. Antes se usaba fitContent(), que mete las 1000
+// velas cargadas en pantalla y las deja minúsculas. Ahora se muestra un número de velas
+// adecuado a cada temporalidad, de modo que se vea la estructura relevante de esa TF.
+function encuadrarPorDefecto(){
+    if(!chart || !candlesData || !candlesData.length) return;
+    const VIS = {'1m':220,'3m':200,'5m':200,'15m':190,'30m':180,
+                 '1h':180,'2h':170,'4h':160,'6h':150,'8h':140,'12h':140,
+                 '1d':130,'3d':110,'1w':90,'1M':60}[currentInterval] || 180;
+    const n = candlesData.length;
+    try{
+        chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - VIS), to: n + 8 });
+        chart.applyOptions({ rightPriceScale: { autoScale: true } });
+    }catch(e){}
+}
+window.encuadrarPorDefecto = encuadrarPorDefecto;
+// el botón "Auto Scale" aplica este mismo encuadre
+function autoScaleChart(){ encuadrarPorDefecto(); }
 function changeChartInterval() {
     const sel = document.getElementById('interval-select');
     const newInterval = sel ? sel.value : currentInterval;
@@ -1735,6 +1865,7 @@ function changeChartInterval() {
 
     currentInterval = newInterval;
     localStorage.setItem('chartInterval', currentInterval);
+    window._forzarEncuadre = true;   // [AÑADIDO v101] reencuadrar con la TF nueva
 
     // Limpiar velas y EMA para mostrar pantalla limpia
     if (candlestickSeries) { try { candlestickSeries.setData([]); } catch(_) {} }
@@ -2205,6 +2336,7 @@ function ajustarTopFullscreen(isFull){
         return;
     }
     try{ agruparHeaderControls(); }catch(e){}   // [AÑADIDO v62] consolidar controles antes de medir
+    try{ if(window._colocarOI) window._colocarOI(); }catch(e){}   // [AÑADIDO v85]
     const h=(hdr?hdr.offsetHeight:50)+2;
     chartSection.style.setProperty('top', h+'px', 'important');
     chartSection.style.setProperty('height', 'calc(100vh - '+h+'px)', 'important');
@@ -2300,6 +2432,10 @@ function setupEventListeners() {
     _searchInput.addEventListener('change', e => _handleSymbolSearch(e.target.value));
     _searchInput.addEventListener('keydown', e => { if(e.key === 'Enter') { e.preventDefault(); _handleSymbolSearch(e.target.value); } });
     document.getElementById('interval-select').addEventListener('change',changeChartInterval);
+    // [AÑADIDO v81] al cambiar el intervalo, el OI en modo Auto recarga al instante
+    document.getElementById('interval-select').addEventListener('change',()=>{
+        try{ if(window.MapaLiq && MapaLiq._state && MapaLiq._state.oiPeriod==="auto") MapaLiq._state.lastOi=0; }catch(_){}
+    });
     window.addEventListener('resize',()=>{if(chart){chart.resize(document.getElementById('chart-container').offsetWidth,700);redrawSelectedLines();}});
 }
 function handleTableClick(event) { const cell=event.target.closest('.price-cell'); if(!cell)return; copyPriceCell({target:cell}); }
@@ -2434,13 +2570,46 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
     // ============================================================
     // 🔬 1. DETECTOR DE ZONAS INSTITUCIONALES (REEMPLAZA analyzeSMC)
     // ============================================================
+    // [AÑADIDO v102] AUDITORÍA: las zonas se calculaban sobre futuresBidsData/futuresAsksData,
+    // que son SOLO las 50 órdenes más grandes de cada lado. Toda la liquidez repartida en
+    // órdenes medianas quedaba fuera: 200 órdenes de $200K en un mismo nivel ($40M reales)
+    // no aparecían porque ninguna entraba individualmente en el top 50.
+    // Ahora se agrega el LIBRO COMPLETO (window._fullBook, miles de niveles) en bins de
+    // ~0.08% y se calcula el precio ponderado por USDT de cada bin.
+    function ordenesLibroCompleto() {
+        const fb = window._fullBook;
+        if (!fb || !fb.bids || !fb.asks || fb.bids.size < 20 || fb.asks.size < 20) return null;
+        const px = markPriceFutures || 0;
+        if (!(px > 0)) return null;
+        const bin = px * 0.0008;
+        const map = new Map();
+        const add = (p, q, side) => {
+            if (!(p > 0) || !(q > 0)) return;
+            const usdt = p * q;
+            const k = side + '_' + Math.round(p / bin);
+            const cur = map.get(k);
+            if (cur) { cur.usdt += usdt; cur.qty += q; cur.n++; cur.pw += p * usdt; }
+            else map.set(k, { side, usdt, qty: q, n: 1, pw: p * usdt });
+        };
+        for (const [p, q] of fb.bids) add(p, q, 'bid');
+        for (const [p, q] of fb.asks) add(p, q, 'ask');
+        const out = [];
+        for (const v of map.values()) {
+            out.push({ price: v.pw / v.usdt, qty: v.qty, usdt: v.usdt, side: v.side, hits: v.n });
+        }
+        return out.length ? out : null;
+    }
+
     function detectInstitutionalZones() {
         if (!markPriceFutures || markPriceFutures <= 0) return [];
 
-        const allOrders = [
+        const _libro = ordenesLibroCompleto();
+        const _fuente = _libro || [
             ...futuresBidsData.map(o => ({ ...o, side: 'bid' })),
             ...futuresAsksData.map(o => ({ ...o, side: 'ask' })),
-        ].filter(o => o.usdt >= getScaledThresholds().minUsdtToShow);
+        ];
+        window._zonasFuente = _libro ? ('libro completo ('+_libro.length+' niveles)') : 'top-50 (respaldo)';
+        const allOrders = _fuente.filter(o => o.usdt >= getScaledThresholds().minUsdtToShow);
 
         if (allOrders.length === 0) return [];
 
@@ -2593,19 +2762,57 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
         clearInstitutionalChartLines();
 
         const now      = Math.floor(Date.now() / 1000);
-        const timeBack = now - INST_CONFIG.lineHoursBack * 3600;
+        // [FIX v92] el trazo GRUESO que resalta la zona ocupa 15 velas, no todo el gráfico.
+        // Se mide en velas (no en horas fijas), así ocupa lo mismo visualmente en 5m que en
+        // diario. La línea fina discontinua del price line sigue cruzando todo el ancho como
+        // referencia, igual que en TradingView.
+        // [AÑADIDO v93] longitud del trazo CONFIGURABLE desde la barra (se guarda entre sesiones).
+        // "todo" = cruza el gráfico entero; un número = esa cantidad de velas desde el borde
+        // derecho. Se mide en velas, así ocupa lo mismo en 5m que en diario.
+        // [FIX v96] trazo CORTO fijo de 6 velas, igual para todas las zonas y en cualquier
+        // temporalidad (referencia del usuario). Sin línea a lo ancho: solo el segmento
+        // pegado al borde derecho + la etiqueta en el eje de precio.
+        const _cdZ = window.candlesData || [];
+        const _barsHL = 6;
+        let timeBack;
+        if(_cdZ.length > 1){
+          const _iniIdx = Math.max(0, _cdZ.length - 1 - _barsHL);
+          timeBack = _cdZ[_iniIdx].time;
+        } else {
+          timeBack = now - INST_CONFIG.lineHoursBack * 3600;
+        }
 
         let _fuera = 0;
-        const _ref = (window.candlesData && window.candlesData.length)
-            ? window.candlesData[window.candlesData.length-1].close
-            : 0;
+        // [FIX v91] el filtro era un ±5% FIJO: en 5m sobraba, pero en 4h/1d recortaba casi
+        // todas las zonas del fractal. Ahora el límite es el RANGO DE VELAS VISIBLE en el
+        // chart (mínimo y máximo de las velas a la vista, más un 8% de margen). Así en
+        // diario abarca de suelo a techo, y como las zonas caen dentro del rango que ya
+        // ocupan las velas, tampoco pueden estirar el auto-escalado.
+        const _cdF = window.candlesData || [];
+        let _zLo = 0, _zHi = 0;
+        try{
+          const lr = chart.timeScale().getVisibleLogicalRange();
+          let i0 = 0, i1 = _cdF.length - 1;
+          if(lr){ i0 = Math.max(0, Math.floor(lr.from)); i1 = Math.min(_cdF.length-1, Math.ceil(lr.to)); }
+          let lo = Infinity, hi = -Infinity;
+          for(let i=i0;i<=i1;i++){ const k=_cdF[i]; if(!k) continue;
+            if(k.low<lo) lo=k.low; if(k.high>hi) hi=k.high; }
+          if(isFinite(lo) && isFinite(hi) && hi>lo){
+            const m=(hi-lo)*0.08;
+            _zLo = lo-m; _zHi = hi+m;
+          }
+        }catch(e){}
+        // respaldo: si no se pudo medir el rango visible, ±8% del último cierre
+        if(!(_zHi>_zLo) && _cdF.length){
+          const c=_cdF[_cdF.length-1].close;
+          _zLo=c*0.92; _zHi=c*1.08;
+        }
         zones.forEach((zone, idx) => {
             try {
                 const isBid   = zone.side === 'bid';
                 const usdt    = zone.totalUsdt || 0;
-                // [FIX v76] zonas a más del 5% no se dibujan: estiraban la escala y aplastaban
-                // las velas. Referencia = cierre de la última vela (siempre del par correcto).
-                if (_ref > 0 && Math.abs(zone.price - _ref) / _ref > 0.05) { _fuera++; return; }
+                // [FIX v91] se dibuja si cae dentro del rango de velas visible (+8% de margen)
+                if (_zHi > _zLo && (zone.price < _zLo || zone.price > _zHi)) { _fuera++; return; }
 
                 // ── Grosor y opacidad según VOLUMEN (no solo tier) ──
                 // >100M (WHALE): línea muy gruesa y brillante
@@ -2613,18 +2820,17 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
                 // >20M (INST):   línea media
                 // >10M:          línea media-fina destacada
                 // <10M (RETAIL): línea fina punteada
-                let width, opacity, lineStyle;
-                if (usdt >= 100e6) {
-                    width = 4; opacity = 0.95; lineStyle = 0;
-                } else if (usdt >= 50e6) {
-                    width = 3; opacity = 0.85; lineStyle = 0;
-                } else if (usdt >= 20e6) {
-                    width = 2; opacity = 0.70; lineStyle = 0;
-                } else if (usdt >= 10e6) {
-                    width = 2; opacity = 0.55; lineStyle = 0;
-                } else {
-                    width = 1; opacity = 0.40; lineStyle = 2; // punteada = bajo volumen
-                }
+                // [FIX v99] TODAS las zonas llevan sobrelínea visible. Antes, las de menos de
+                // 10M se dibujaban con grosor 1, opacidad 0.40 y punteada → no se veían, y
+                // parecía que solo algunas zonas tenían trazo. Ahora todas son sólidas con un
+                // mínimo legible; la diferencia de tamaño se sigue notando en el grosor.
+                let width, opacity;
+                const lineStyle = 0;                    // sólida siempre
+                if (usdt >= 100e6) { width = 5; opacity = 1.00; }
+                else if (usdt >= 50e6) { width = 4; opacity = 0.95; }
+                else if (usdt >= 20e6) { width = 3; opacity = 0.90; }
+                else if (usdt >= 10e6) { width = 3; opacity = 0.82; }
+                else                   { width = 2; opacity = 0.75; }
 
                 // Verde para bid (soporte), rojo para ask (resistencia)
                 const baseColor = isBid ? `0,255,136` : `255,85,85`;
@@ -2688,6 +2894,10 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
                     lineWidth:         1,
                     lineStyle:         2,
                     axisLabelVisible:  true,
+                    // [FIX v98] la línea fina SÍ cruza todo el gráfico (es la referencia del
+                    // nivel a lo largo del chart) y encima va la "sobrelínea" gruesa corta de
+                    // 6 velas que marca la zona activa. Las dos juntas, como en la referencia.
+                    lineVisible:       true,
                     title: `${volBar} ${tierIcon} ${sideLabel} | ${formatPrice(zone.price)} | ${formatUsdt(zone.totalUsdt)} | ${distSign}${distPct}%${_rebounds}${(()=>{
     const today = getLocalDate ? getLocalDate() : new Date().toLocaleDateString('sv');
     const histKey = 'inst_zones_history_' + (typeof symbol !== 'undefined' ? symbol : '');
@@ -2714,7 +2924,7 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
         });
 
         institutionalZones = zones;
-        console.log(`🏛️ ZONAS → recibidas:${zones.length} pintadas:${(window._instChartLines||[]).length} fuera_5%:${_fuera} ocultas:${!!window._instLinesHidden} mitigadas:${mitigatedZones.length} ref:${_ref}`);
+        console.log(`🏛️ ZONAS → recibidas:${zones.length} pintadas:${(window._instChartLines||[]).length} fuera_rango:${_fuera} ocultas:${!!window._instLinesHidden} mitigadas:${mitigatedZones.length} rango:${Math.round(_zLo)}-${Math.round(_zHi)}`);
     }
 
     function clearInstitutionalChartLines() {
@@ -8410,6 +8620,17 @@ function startWatchlistMonitor() {
 // primer clic las volvía a esconder y parecía que el botón no funcionaba.
 window._instLinesHidden = false;
 try{ localStorage.setItem("instLinesHidden","0"); }catch(_){}
+// [AÑADIDO v93] longitud del trazo de las zonas: se guarda y redibuja al instante
+window.setZonaTrazo = function(v){
+  try{ localStorage.setItem("zonaTrazo", v); }catch(_){}
+  document.querySelectorAll(".zona-trazo-sel").forEach(s=>{ if(s.value!==v) s.value=v; });
+  if(typeof window.refreshInstZones==="function") window.refreshInstZones();
+};
+document.addEventListener("DOMContentLoaded", ()=>setTimeout(()=>{
+  let v="20"; try{ v=localStorage.getItem("zonaTrazo")||"20"; }catch(_){}
+  document.querySelectorAll(".zona-trazo-sel").forEach(s=>s.value=v);
+}, 1500));
+
 window.toggleInstLines = function(){
   window._instLinesHidden = !window._instLinesHidden;
   (window._instChartLines||[]).forEach(l=>{ try{ l.series.applyOptions({visible:!window._instLinesHidden}); }catch(_){} });
@@ -8467,8 +8688,12 @@ const MapaLiq = (function(){
   function oiPeriodStr(){
     if(S.oiPeriod!=="auto" && S.oiPeriod!=="live") return S.oiPeriod;
     const iv=(typeof currentInterval!=="undefined")?currentInterval:"15m";
+    // [FIX v89] faltaban las temporalidades altas: 1w y 1M caían al valor por defecto de 5m.
+    // Binance solo publica OI en 5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h y 1d — no hay semanal
+    // ni mensual, así que esas TF usan 1d, el periodo más alto disponible.
     return {"1m":"5m","3m":"5m","5m":"5m","15m":"15m","30m":"30m",
-            "1h":"1h","2h":"2h","4h":"4h","1d":"1d"}[iv] || "5m";
+            "1h":"1h","2h":"2h","4h":"4h","6h":"6h","8h":"12h","12h":"12h",
+            "1d":"1d","3d":"1d","1w":"1d","1M":"1d"}[iv] || "1h";
   }
   function setOIPeriod(v){
     S.oiPeriod=v;
@@ -9010,15 +9235,30 @@ const MapaLiq = (function(){
     }
     // 4) ZONAS DE REACCIÓN (líneas punteadas con toques)
     if(S.on.react){
+      // [AÑADIDO v95] identidad visual propia: NARANJA (rechazo en máximo) / CIAN (en mínimo),
+      // trazo PUNTO-RAYA (distinto del discontinuo largo de los muros) y grosor + opacidad
+      // según la fuerza (nº de toques). Etiqueta con chip a la izquierda, no suelta.
       for(const z of S.reactZones){
         const y=yOf(z.price); if(y==null||y<0||y>h) continue;
         const up=z.side==="high";
-        cx.strokeStyle=up?"rgba(255,170,90,0.7)":"rgba(90,190,255,0.7)";
-        cx.setLineDash([3,4]); cx.lineWidth=z.toques>1?2:1;
+        const fuerza=Math.min(1,(z.toques-1)/3);            // 1 toque=0 · 4+ toques=1
+        const alpha=0.45+fuerza*0.5;
+        const lw=1+fuerza*2;
+        const colL=up?`rgba(255,150,40,${alpha})`:`rgba(0,220,235,${alpha})`;
+        const colT=up?"#ffb060":"#5ce8f5";
+        cx.strokeStyle=colL; cx.lineWidth=lw;
+        cx.setLineDash([10,4,2,4]);                          // punto-raya
         cx.beginPath(); cx.moveTo(0,y); cx.lineTo(w-axisPad,y); cx.stroke(); cx.setLineDash([]);
-        cx.fillStyle=up?"rgba(255,190,120,0.9)":"rgba(140,210,255,0.9)"; cx.font="9px Consolas";
-        cx.fillText(`⟲ ${fmtP(z.price)} ×${z.toques}`, w-axisPad-96, y-4);
+        const txtR=`⟲ ${up?"RECHAZO ▲":"RECHAZO ▼"} ${fmtP(z.price)} ×${z.toques}`;
+        cx.font="bold 11px Consolas"; cx.textBaseline="middle";
+        const twR=cx.measureText(txtR).width;
+        const xR2=w-axisPad-twR-18;
+        cx.fillStyle="rgba(3,6,12,0.9)"; cx.fillRect(xR2-6, y-9, twR+12, 18);
+        cx.strokeStyle=colL; cx.lineWidth=1; cx.strokeRect(xR2-6, y-9, twR+12, 18);
+        cx.fillStyle=colT; cx.fillText(txtR, xR2, y);
+        cx.textBaseline="alphabetic";
       }
+      cx.lineWidth=1;
     }
     // 5) MUROS reales del libro (★ dominante) — [FIX v21] con indicadores de fuera de pantalla
     if(S.on.book){
@@ -9033,9 +9273,13 @@ const MapaLiq = (function(){
           if(y==null||y<0||y>h) continue;
           // [AÑADIDO v28] muros AZUL(compra)/VIOLETA(venta) + trazo discontinuo largo:
           // identidad visual totalmente distinta de las zonas inst (verde/rojo, trazo fino)
+          // [AÑADIDO v95] grosor y opacidad PROPORCIONALES al tamaño del muro, no solo
+          // "dominante o no": así se ve de un vistazo cuál pesa más
           const esDominante=(wll.usd===maxUsd);
-          const lw=esDominante?2:1.2;
-          const colLine=bid?`rgba(77,163,255,${esDominante?0.6:0.42})`:`rgba(192,132,252,${esDominante?0.6:0.42})`;
+          const rel=Math.min(1, wll.usd/maxUsd);
+          const lw=1+rel*2.4;
+          const alphaW=0.30+rel*0.45;
+          const colLine=bid?`rgba(77,163,255,${alphaW})`:`rgba(192,132,252,${alphaW})`;
           const colTxt =bid?"#9cc8ff":"#dcb8ff";
           cx.strokeStyle=colLine;
           cx.lineWidth=lw;
@@ -9150,7 +9394,7 @@ const MapaLiq = (function(){
     if(sig!==S.sig){ // cambió par/TF/nº velas → recomputar
       const parChanged=!S.sig.startsWith(symbol+"|");
       S.sig=sig;
-      if(parChanged){ S.bookTracked=[]; S.bookWalls=[]; S.bookBin=null; S.oiMap=null; S.htfZones=[]; S.oiLiveSer=[]; }
+      if(parChanged){ S.bookTracked=[]; S.bookWalls=[]; S.bookBin=null; S.oiMap=null; S.htfZones=[]; S.oiLiveSer=[]; S.oiPeriodUsed=null; }
       // [AÑADIDO v80] en modo Auto el periodo del OI depende de la TF: si cambió, recargar
       if(S.oiPeriod==="auto" && S.oiPeriodUsed && S.oiPeriodUsed!==oiPeriodStr()){ S.lastOi=0; }
       if(now-S.lastOi>300000||!S.oiMap){ S.lastOi=now; fetchOI().then(()=>{ recomputeAll(); }); }
@@ -9160,8 +9404,18 @@ const MapaLiq = (function(){
       S.lastCompute=now;
       recomputeAll();
     }
-    // [AÑADIDO v75] el OI se refrescaba solo cuando cambiaba la firma; ahora también
-    // por su cuenta cada 5 min, así el widget nunca se queda con datos viejos
+    // [AÑADIDO v88] comprobación EN CADA CICLO (cada 2s): si el modo es Auto y el periodo
+    // que toca según la TF del chart ya no coincide con el que se descargó, se recarga al
+    // instante. Antes esto solo se miraba dentro del bloque de cambio de firma y podía
+    // no dispararse justo al cambiar de intervalo.
+    const _perTocaOI = oiPeriodStr();
+    if(S.oiPeriod==="auto" && S.oiPeriodUsed && S.oiPeriodUsed!==_perTocaOI){
+      console.log("🔄 OI: la TF cambió → periodo "+S.oiPeriodUsed+" → "+_perTocaOI);
+      S.oiPeriodUsed=_perTocaOI;          // evita repetir el aviso mientras descarga
+      S.lastOi=Date.now();
+      fetchOI().then(updateOI);
+    }
+    // [AÑADIDO v75] refresco periódico de garantía cada 5 min
     if(now-S.lastOi>300000){ S.lastOi=now; fetchOI().then(updateOI); }
     fetchBook();       // barato: lee los Maps ya en memoria
     fetchOILive();     // [AÑADIDO v77] OI actual cada 15s
@@ -9239,6 +9493,19 @@ const MapaLiq = (function(){
     set("fsoi-1h",  txtOf(c1h,LC),  colOf(c1h));
     set("fsoi-24h", txtOf(c24h,"24h"), colOf(c24h));
     // punto verde = valor en vivo (≤15s); gris = solo histórico disponible
+    // [AÑADIDO v81] la opción "Auto TF" muestra el periodo efectivo, así se ve de un vistazo
+    // que sigue al intervalo del chart (y cuándo Binance obliga a subir a 5m)
+    const efec=S.oiPeriodUsed||"5m";
+    const ivAct=(typeof currentInterval!=="undefined")?currentInterval:"?";
+    document.querySelectorAll(".oi-per-sel").forEach(sel=>{
+      const opt=sel.querySelector('option[value="auto"]');
+      if(opt){
+        const txt = (ivAct===efec) ? ("Auto · "+efec) : ("Auto · "+efec+" (chart "+ivAct+")");
+        if(opt.textContent!==txt) opt.textContent=txt;
+      }
+      sel.title = "Periodo del histórico de OI. En Auto sigue el intervalo del gráfico ("
+        + ivAct + " → " + efec + "). Binance no publica OI por debajo de 5m; usa 'Vivo 15s' para ir más fino.";
+    });
     const dot=document.getElementById("oi-dot");
     if(dot){ dot.style.background = vivo?"#26d67c":"#7d8ca5";
              dot.title = vivo?("OI en vivo · actualizado hace "+Math.round((Date.now()-_oiLive.ts)/1000)+"s")
@@ -9462,23 +9729,31 @@ const MapaLiq = (function(){
         +`<span>Demanda (bids) <b id="fsod-demanda" style="color:#26d67c;">—</b></span></div>`
         +`<div style="height:8px;border-radius:3px;overflow:hidden;background:#1a2233;margin-top:3px;display:flex;">`
         +`<div id="fsod-bar-oferta" style="background:linear-gradient(90deg,#c22536,#ff5b6e);width:50%;transition:width .5s;"></div>`
-        +`<div id="fsod-bar-demanda" style="background:linear-gradient(90deg,#26d67c,#1a9e5c);width:50%;transition:width .5s;"></div></div>`
-        // [AÑADIDO v75] Interés Abierto con mini-gráfico
-        +`<div style="font-size:9px;color:#7d8ca5;text-transform:uppercase;letter-spacing:.5px;margin:6px 0 3px;border-top:1px solid #223349;padding-top:5px;">Interés abierto · Binance `
-        +`<select class="oi-per-sel" onchange="MapaLiq.setOIPeriod(this.value)" style="background:#131a28;color:#8ea4c4;border:1px solid #2a3a54;border-radius:4px;font-size:9px;padding:0 2px;">`
-        +`<option value="auto">Auto TF</option><option value="live">Vivo 15s</option><option value="5m">5m</option>`
-        +`<option value="15m">15m</option><option value="30m">30m</option><option value="1h">1h</option><option value="4h">4h</option></select></div>`
-        +`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">`
-        +`<span><b id="fsoi-value" style="font-size:19px;color:#e6edf6;">—</b>`
-        +` <span id="fsoi-1h" style="font-size:12px;font-weight:700;">1h —</span>`
-        +` <span id="fsoi-24h" style="font-size:12px;font-weight:700;">24h —</span></span>`
-        +`<svg id="fsoi-spark" width="140" height="30"></svg></div>`;
+        +`<div id="fsod-bar-demanda" style="background:linear-gradient(90deg,#26d67c,#1a9e5c);width:50%;transition:width .5s;"></div></div>`;
+        // [AÑADIDO v84] la sección de Interés Abierto se quitó de aquí: estaba duplicada
+        // con el bloque de la barra superior, que es el que se mantiene
       // [AÑADIDO v38] va DENTRO del header (tras el bloque central) → centrado y ordenado en fullscreen
       const hdr=document.querySelector(".header-controls");
       const hcenter=hdr?hdr.querySelector(".header-center"):null;
       if(hdr&&hcenter&&hcenter.nextSibling) hdr.insertBefore(fsls, hcenter.nextSibling);
       else if(hdr) hdr.appendChild(fsls);
       else cont.appendChild(fsls);
+      // [AÑADIDO v85] en maximizado el bloque de Interés Abierto se mueve JUSTO A LA DERECHA
+      // del widget de Largo/Corto (y vuelve a su sitio en la barra al salir de fullscreen)
+      window._colocarOI=function(){
+        const oiB=document.getElementById("oi-header-block");
+        const grupo=document.getElementById("fs-center-group");
+        const hLeft=document.querySelector(".header-left");
+        if(!oiB) return;
+        const enFull=document.body.classList.contains("fullscreen-active");
+        if(enFull){
+          if(grupo && oiB.parentElement!==grupo) grupo.appendChild(oiB);   // último del grupo = a la derecha del widget
+        }else{
+          if(hLeft && oiB.parentElement!==hLeft) hLeft.appendChild(oiB);
+        }
+      };
+      setInterval(window._colocarOI, 1200);
+      setTimeout(window._colocarOI, 400);
     })();
     // [AÑADIDO v24] TOOLTIP al pasar el ratón: precio + liquidez estimada + volumen real
     // + qué señales hay en ese nivel (zona de calor, muro, reacción, objetivo, macro)
@@ -9689,5 +9964,40 @@ const MapaLiq = (function(){
 /* ======================== [FIN AÑADIDO MAPA-LIQ] ======================== */
 </script>
 
+<script>
+// [AÑADIDO v102] AUDITORÍA DE DATOS — escribe auditar() en la consola
+window.auditar = function(){
+  const fb = window._fullBook || {bids:new Map(), asks:new Map()};
+  const cd = window.candlesData || [];
+  const S  = (window.MapaLiq && MapaLiq._state) ? MapaLiq._state : {};
+  const f  = n => n>=1e9 ? (n/1e9).toFixed(2)+'B' : n>=1e6 ? (n/1e6).toFixed(2)+'M' : (n/1e3).toFixed(0)+'K';
+  let sumA=0, sumB=0;
+  for(const [p,q] of fb.asks) sumA += p*q;
+  for(const [p,q] of fb.bids) sumB += p*q;
+  const velaTb = cd.length ? cd.filter(k=>Number.isFinite(k.tb)).length : 0;
+
+  console.log('%c🔍 AUDITORÍA DE DATOS', 'background:#37c0ff;color:#000;font-weight:bold;padding:3px 10px;');
+  console.table([
+    {capa:'Libro (niveles)',        tipo:'REAL',    fuente:'WS @depth + snapshot REST', valor:fb.asks.size+' asks / '+fb.bids.size+' bids'},
+    {capa:'Liquidez total',         tipo:'REAL',    fuente:window._liqFuente||'?',      valor:f(sumA)+' / '+f(sumB)},
+    {capa:'Zonas institucionales',  tipo:'REAL',    fuente:window._zonasFuente||'?',    valor:((window.institutionalZones||[]).length)+' zonas'},
+    {capa:'Muros (mapa)',           tipo:'REAL',    fuente:'_fullBook, bins 0.15%',     valor:((S.bookWalls||[]).length)+' muros ≥ '+f(S.bookMinUsd||0)},
+    {capa:'VRVP / POC',             tipo:'REAL',    fuente:'volumen de velas visibles', valor:(S.vpCandles||0)+' velas'},
+    {capa:'Zonas de reacción',      tipo:'REAL',    fuente:'mechas de rechazo',         valor:((S.reactZones||[]).length)+' zonas'},
+    {capa:'Interés Abierto',        tipo:'REAL',    fuente:'openInterest + Hist',       valor:'periodo '+(S.oiPeriodUsed||'?')},
+    {capa:'Largo/Corto taker',      tipo:'REAL',    fuente:'kline[10] velas 5m',        valor:'ventana '+(S.lsWindow||'?')},
+    {capa:'Spread real',            tipo:'REAL',    fuente:'_fullBook + bookTicker',    valor:(document.getElementById('real-spread')||{}).textContent||'—'},
+    {capa:'Velas con taker-buy',    tipo:'REAL',    fuente:'REST + WS kline',           valor:velaTb+'/'+cd.length},
+    {capa:'Heatmap liquidaciones',  tipo:'MODELO',  fuente:'vol+taker+OI, lev 10/25/50/100x', valor:'openFrac '+(S.openFrac||'?')},
+    {capa:'Objetivos',              tipo:'MODELO',  fuente:'derivado del heatmap',      valor:((S.targetList||[]).length)+' niveles'},
+    {capa:'Zonas de calor',         tipo:'MIXTO',   fuente:'fusión real + modelo',      valor:((S.heatZones||[]).length)+' zonas'},
+    {capa:'Zonas macro HTF',        tipo:'MODELO',  fuente:'mismo modelo en '+(S.htfTf||'?'), valor:((S.htfZones||[]).length)+' zonas'},
+  ]);
+  if(!fb.asks.size) console.warn('⚠️ El libro aún no está sincronizado: los cálculos usan el respaldo del top-50.');
+  if(velaTb < cd.length) console.warn('⚠️ '+(cd.length-velaTb)+' velas sin taker-buy: el modelo usa 0.5 neutro en esas.');
+  return 'REAL = dato medido · MODELO = estimación · MIXTO = fusión de ambos';
+};
+console.log('%c💡 Escribe auditar() para ver de dónde sale cada dato', 'color:#37c0ff');
+</script>
 </body>
 </html>
