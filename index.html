@@ -751,7 +751,7 @@ setInterval(()=>{
 // ===================================================
 // VARIABLES Y CONFIGURACIÓN GLOBAL
 // ===================================================
-console.log('%c🔖 ORDERBOOK v102 — auditado', 'background:#26d67c;color:#000;font-weight:bold;padding:2px 8px;border-radius:4px;');
+console.log('%c🔖 ORDERBOOK v125', 'background:#26d67c;color:#000;font-weight:bold;padding:2px 8px;border-radius:4px;');
 // Cargar símbolo desde localStorage (compatible con file://)
 let symbol = "BTCUSDT";
 try {
@@ -1107,41 +1107,90 @@ class BinanceWebSocketManager {
         }
     }
     connectKline(interval='1h') {
+        // [FIX v121] KLINE SIMPLE, COMO EL SCRIPT DE REFERENCIA QUE FUNCIONA BIEN.
+        // Antes pasaba por createWebSocket, el gestor genérico con backoff, pings,
+        // detección de mensajes de control y reemplazo de instancias. Esa capa era la
+        // que dejaba el kline mudo: reconectaba con retardos crecientes, se pisaba a sí
+        // misma al cambiar de intervalo y perdía mensajes por el camino.
+        // Ahora es un WebSocket propio y directo, exactamente como la referencia.
         const validIntervals=['1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d','3d','1w','1M'];
-        let cleanInterval=validIntervals.includes(interval)?interval:'1h';
-        const existingKline=this.wsInstances.get('kline');
-        if(existingKline&&existingKline.readyState!==WebSocket.CLOSED){existingKline.close(1000,'Cambiando intervalo');this.wsInstances.delete('kline');if(this.pingIntervals.has('kline')){clearInterval(this.pingIntervals.get('kline'));this.pingIntervals.delete('kline');}}
-        const wsUrl=`wss://stream.binancefuture.com/ws/${this.symbol}@kline_${cleanInterval}`;
-        const _klineId = Date.now(); // ID único para esta conexión
-        window._activeKlineId = _klineId;
-        this.createWebSocket('kline',wsUrl,(event)=>{
-            try{
-                if(event.data==='pong'||event.data.includes('"pong"'))return;
-                // Ignorar si hay una conexión kline más nueva
-                if(window._activeKlineId !== _klineId) return;
-                const data=JSON.parse(event.data); const kline=data.k; if(!kline)return;
-                const newCandle={time:Math.floor(kline.t/1000),open:parseFloat(kline.o),high:parseFloat(kline.h),low:parseFloat(kline.l),close:parseFloat(kline.c),volume:parseFloat(kline.v),usdt:parseFloat(kline.q),tb:parseFloat(kline.Q)}; // [AÑADIDO MAPA-LIQ] usdt (quote vol) y tb (taker buy) también en la vela en vivo
-                if(kline.x){const existingIndex=candlesData.findIndex(c=>c.time===newCandle.time); if(existingIndex!==-1)candlesData[existingIndex]=newCandle; else candlesData.push(newCandle); if(candlesData.length>1000)candlesData.shift(); lastCandle=newCandle;}
-                else{if(candlesData.length>0&&candlesData[candlesData.length-1].time===newCandle.time)candlesData[candlesData.length-1]=newCandle; else if(candlesData.length===0||newCandle.time>candlesData[candlesData.length-1].time){candlesData.push(newCandle);if(candlesData.length>1000)candlesData.shift();}}
-                if(candlestickSeries){
-                    window.candlesData = candlesData;
-                    // Throttle: actualizar gráfico máximo cada 500ms
-                    const _now = Date.now();
-                    if(!window._lastChartUpdate || _now - window._lastChartUpdate >= 500 || kline.x){
-                        window._lastChartUpdate = _now;
-                        try { candlestickSeries.update(newCandle); } catch(_) {
-                            candlestickSeries.setData(fillCandleGaps(candlesData,intervalToSeconds(currentInterval)));
-                        }
-                        // EMA solo al cerrar vela
-                        if(kline.x){
-                            const ema100=calculateEMA(candlesData,window._emaPeriod||100);
-                            if(emaSeries)emaSeries.setData(ema100);
-                        }
+        const iv = validIntervals.includes(interval) ? interval : '1h';
+
+        // cerrar el anterior si lo hubiera
+        if (window._klineWS) {
+            try { window._klineWS.onclose=null; window._klineWS.onmessage=null; window._klineWS.close(); } catch(_) {}
+            window._klineWS = null;
+        }
+
+        const url = this.useSpot
+            ? `wss://stream.binance.com:9443/ws/${this.symbol}@kline_${iv}`
+            : `wss://fstream.binance.com/ws/${this.symbol}@kline_${iv}`;
+
+        const ws = new WebSocket(url);
+        window._klineWS = ws;
+        const symAlAbrir = this.symbol;
+
+        ws.onopen = () => {
+            console.log('✅ kline conectado ('+iv+')');
+            updateWsStatus('kline: Conectado');
+            if (!window.candlesData || window.candlesData.length === 0) {
+                if (typeof loadHistoricalKlines === 'function') loadHistoricalKlines();
+            }
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                const kline = data.k;
+                if (!kline) return;
+                if (this.symbol !== symAlAbrir) return;   // llegó de una conexión vieja
+                window._lastKlineMsg = Date.now();
+
+                const newCandle = {
+                    time:  Math.floor(kline.t/1000),
+                    open:  parseFloat(kline.o),
+                    high:  parseFloat(kline.h),
+                    low:   parseFloat(kline.l),
+                    close: parseFloat(kline.c),
+                    volume:parseFloat(kline.v),
+                    usdt:  parseFloat(kline.q),
+                    tb:    parseFloat(kline.Q),
+                };
+
+                const ult = candlesData[candlesData.length-1];
+                if (ult && ult.time === newCandle.time) {
+                    candlesData[candlesData.length-1] = newCandle;
+                } else if (!ult || newCandle.time > ult.time) {
+                    candlesData.push(newCandle);
+                    if (candlesData.length > 600) candlesData.shift();
+                }
+                if (kline.x) lastCandle = newCandle;
+
+                window.candlesData = candlesData;
+                if (candlestickSeries) {
+                    try { candlestickSeries.setData(candlesData); } catch(_) {}
+                    if (kline.x) {
+                        const ema = calculateEMA(candlesData, window._emaPeriod||100);
+                        if (emaSeries) emaSeries.setData(ema);
                     }
                 }
-            }catch(err){console.error('Error procesando kline:',err);}
-        },true);
+            } catch(err) { console.error('Error procesando kline:', err); }
+        };
+
+        ws.onerror = () => { updateWsStatus('kline: Reconectando...'); };
+
+        ws.onclose = (e) => {
+            updateWsStatus('kline: Desconectado ('+e.code+')');
+            window._klineWS = null;
+            if (e.code !== 1000) {
+                console.warn('⚠️ kline cerrado ('+e.code+') → reconectando en 2s');
+                setTimeout(() => {
+                    if (wsManager && wsManager.symbol === symAlAbrir) wsManager.connectKline(currentInterval);
+                }, 2000);
+            }
+        };
     }
+
     createWebSocket(type,url,onMessageHandler,isKline=false) {
         const oldWs=this.wsInstances.get(type);
         if(oldWs&&oldWs.readyState!==WebSocket.CLOSED){oldWs.onclose=null;oldWs.onerror=null;oldWs.onmessage=null;oldWs.close(1000,'Reemplazando');this.wsInstances.delete(type);}
@@ -1168,6 +1217,20 @@ class BinanceWebSocketManager {
                 }, 3 * 60 * 1000);  // cada 3 minutos
                 this.pingIntervals.set(type,pingInterval);
                 if(type==='kline'){
+                    // [FIX v107] tras una reconexión, si la última vela quedó desfasada más de
+                    // 3 intervalos es que se perdieron velas: se recarga el histórico completo
+                    try{
+                        const _cd=window.candlesData||[];
+                        const _st=intervalToSeconds(currentInterval);
+                        if(_cd.length && _st>0){
+                            const _desfase=(Date.now()/1000) - _cd[_cd.length-1].time;
+                            if(_desfase > _st*3){
+                                // [FIX v115] no vaciar: loadHistoricalKlines ya reemplaza los datos
+                                console.warn('🔧 Reconexión con '+Math.floor(_desfase/_st)+' velas de desfase → recargando histórico');
+                                setTimeout(()=>{ try{ loadHistoricalKlines(); }catch(_){} }, 500);
+                            }
+                        }
+                    }catch(_){}
                     // Solo cargar histórico si no hay velas ya (evita saltos en reconexión)
                     const needsLoad = !window.candlesData || window.candlesData.length === 0;
                     if(needsLoad && !window._klineLoading){
@@ -1224,6 +1287,8 @@ class BinanceWebSocketManager {
         this.pingIntervals.forEach(i=>clearInterval(i)); this.pingIntervals.clear();
         this.reconnectTimeouts.forEach(t=>clearTimeout(t)); this.reconnectTimeouts.clear();
         this.wsInstances.forEach(ws=>{if(ws&&ws.readyState!==WebSocket.CLOSED){ws.onclose=null;ws.close(1000,'Desconexión manual');}});
+        // [FIX v121] cerrar también el kline, que ahora vive fuera del gestor
+        if(window._klineWS){ try{ window._klineWS.onclose=null; window._klineWS.close(1000,'Desconexión manual'); }catch(_){} window._klineWS=null; }
         this.wsInstances.clear();
     }
 }
@@ -1409,7 +1474,19 @@ function updateHeaderPrice(price,change24h) {
     const isUp24=chg>=0;
     changeEl.textContent=`${isUp24?'▲':'▼'} ${Math.abs(chg).toFixed(2)}%`;
     changeEl.style.color=isUp24?'#4eff78':'#ff5555';
-    updateCurrentCandleWithPrice(price);
+    // [FIX v123] el ticker solo toca la vela si es una ABIERTA POR RELOJ y todavía sin
+    // datos del WS (volume 0). Así esa vela provisional se mueve con el precio en vez de
+    // quedarse como una raya plana, y en cuanto llega el kline real, éste manda.
+    try{
+        const _u = candlesData[candlesData.length-1];
+        if(_u && _u.volume === 0 && price > 0){
+            _u.close = price;
+            _u.high  = Math.max(_u.high, price);
+            _u.low   = Math.min(_u.low,  price);
+            window.candlesData = candlesData;
+            if(candlestickSeries) candlestickSeries.setData(candlesData);
+        }
+    }catch(_){}
 }
 function updateCurrentCandleWithPrice(currentPrice) {
     if(!candlestickSeries||candlesData.length===0)return;
@@ -1483,7 +1560,11 @@ function scheduleTableUpdate() { if(!pendingUpdate&&!updatePaused){pendingUpdate
 function startInteraction(){isInteracting=true;updatePaused=true;}
 function endInteraction(){isInteracting=false;updatePaused=false;scheduleTableUpdate();}
 function procesarLiquidez(price,quantity,isAsk){recordGlassmapLiquidity(price,price*quantity);}
-function recordGlassmapLiquidity(price,usdt){if(!glassmapDensity[price])glassmapDensity[price]=0;glassmapDensity[price]+=usdt;if(Object.keys(glassmapDensity).length>4000){/* [AÑADIDO] poda el 25% más pequeño en vez de borrar todo: conserva las zonas gordas del glassmap */const _e=Object.entries(glassmapDensity).sort((a,b)=>a[1]-b[1]);const _n=Math.floor(_e.length*0.25);for(let _i=0;_i<_n;_i++)delete glassmapDensity[_e[_i][0]];}}
+// [OPT v104] glassmapDensity se llamaba en CADA delta del WebSocket (cientos por segundo)
+// creando una clave por precio exacto → decenas de miles de entradas, y al podar hacía un
+// Object.entries + sort de 4000 elementos. Ningún panel consume esos datos (resto de una
+// función retirada), así que se desactiva. Es el mayor ahorro de memoria y CPU.
+function recordGlassmapLiquidity(price,usdt){ /* desactivado — ver [OPT v104] */ }
 function updateProcessedCounters() {
     const totalPrices=asksProcessed+bidsProcessed;
     document.getElementById('total-prices').innerText=totalPrices.toLocaleString();
@@ -1547,19 +1628,31 @@ function updateProcessedCounters() {
     else if(bidsProcessed>asksProcessed){document.getElementById('bids-indicator-start')?.classList.add('circle-green');document.getElementById('bids-indicator-end')?.classList.add('circle-green');}
     scheduleTableUpdate();
 }
-function updateLiquidityStats() {
-    // [AÑADIDO v102] AUDITORÍA: "Liquidez Asks/Bids" sumaba solo las 50 órdenes mayores,
-    // no el libro. Ahora se calcula sobre el libro COMPLETO (miles de niveles) y solo se
-    // recurre al top-50 si el libro aún no está sincronizado.
-    let totalAsk = 0, totalBid = 0, grandesAsk = 0, grandesBid = 0, libroOk = false;
+// [OPT v104] resumen del libro CACHEADO 1s: antes updateLiquidityStats, el desequilibrio
+// y la auditoría recorrían cada uno los miles de niveles por su cuenta, varias veces por
+// segundo. Ahora se recorre una sola vez y todos leen el mismo resultado.
+window._resumenLibro = null;
+function resumenLibro(){
+    const r = window._resumenLibro;
+    if (r && Date.now() - r.ts < 1000) return r;
+    let totalAsk=0, totalBid=0, grandesAsk=0, grandesBid=0, ok=false;
     try {
         const fb = window._fullBook;
         if (fb && fb.bids.size > 20 && fb.asks.size > 20) {
-            for (const [p, q] of fb.asks) { const u = p*q; totalAsk += u; if (u >= LARGE_ORDER_THRESHOLD) grandesAsk++; }
-            for (const [p, q] of fb.bids) { const u = p*q; totalBid += u; if (u >= LARGE_ORDER_THRESHOLD) grandesBid++; }
-            libroOk = true;
+            for (const [p,q] of fb.asks){ const u=p*q; totalAsk+=u; if(u>=LARGE_ORDER_THRESHOLD) grandesAsk++; }
+            for (const [p,q] of fb.bids){ const u=p*q; totalBid+=u; if(u>=LARGE_ORDER_THRESHOLD) grandesBid++; }
+            ok = true;
         }
     } catch(_) {}
+    window._resumenLibro = { totalAsk, totalBid, grandesAsk, grandesBid, ok, ts: Date.now() };
+    return window._resumenLibro;
+}
+
+function updateLiquidityStats() {
+    const _rl = resumenLibro();
+    let totalAsk = _rl.totalAsk, totalBid = _rl.totalBid;
+    let grandesAsk = _rl.grandesAsk, grandesBid = _rl.grandesBid;
+    const libroOk = _rl.ok;
     if (!libroOk) {
         totalAsk = futuresAsksData.reduce((s,o)=>s+o.usdt,0);
         totalBid = futuresBidsData.reduce((s,o)=>s+o.usdt,0);
@@ -1638,15 +1731,9 @@ function updateLiquidityStats() {
 }
 function updateOrderBookImbalance() {
     // [AÑADIDO v102] el desequilibrio también se medía solo con el top-50; ahora libro completo
-    let totalBidLiquidity=0, totalAskLiquidity=0, _ok=false;
-    try{
-        const fb=window._fullBook;
-        if(fb && fb.bids.size>20 && fb.asks.size>20){
-            for(const [p,q] of fb.asks) totalAskLiquidity += p*q;
-            for(const [p,q] of fb.bids) totalBidLiquidity += p*q;
-            _ok=true;
-        }
-    }catch(_){}
+    const _rl2 = resumenLibro();   // [OPT v104] reutiliza el resumen cacheado
+    let totalBidLiquidity=_rl2.totalBid, totalAskLiquidity=_rl2.totalAsk;
+    const _ok=_rl2.ok;
     if(!_ok){ totalBidLiquidity=futuresBidsData.reduce((s,o)=>s+o.usdt,0); totalAskLiquidity=futuresAsksData.reduce((s,o)=>s+o.usdt,0); }
     const totalLiquidity=totalBidLiquidity+totalAskLiquidity;
     if(totalLiquidity>0){
@@ -1764,7 +1851,7 @@ function initializeChart() {
             rightPriceScale:{ autoScale: true },
             timeScale:{
                 barSpacing: 8,
-                rightOffset: 5,
+                rightOffset: 2,   // [FIX v106] 5→2: dejaba demasiado hueco entre la vela actual y el borde
                 fixRightEdge: false,
                 lockVisibleTimeRangeOnResize: true,
             },
@@ -1807,7 +1894,7 @@ async function loadHistoricalKlines() {
         }
         const data=await response.json();
         candlesData=data.map(kline=>({time:Math.floor(kline[0]/1000),open:parseFloat(kline[1]),high:parseFloat(kline[2]),low:parseFloat(kline[3]),close:parseFloat(kline[4]),volume:parseFloat(kline[5]),usdt:parseFloat(kline[7]),tb:parseFloat(kline[10])})); // [AÑADIDO MAPA-LIQ] tb = taker buy quote vol (kline[10]) pa el modelo de liquidez
-        if(candlesData.length>1000)candlesData=candlesData.slice(-1000);
+        if(candlesData.length>600)candlesData=candlesData.slice(-600);   // [OPT v104] 1000→600 velas: menos RAM, sigue sobrando para el encuadre y el modelo
         if(candlestickSeries){window.candlesData = candlesData; candlestickSeries.setData(fillCandleGaps(candlesData,intervalToSeconds(currentInterval)));const ema100=calculateEMA(candlesData,window._emaPeriod||100);if(emaSeries)emaSeries.setData(ema100);const loadingMsg=document.querySelector('.loading-message');if(loadingMsg)loadingMsg.style.display='none';
         // Ajustar precisión decimal según el precio del par
         if (candlesData.length > 0) {
@@ -1846,12 +1933,15 @@ function calculateEMA(data,period) {
 // adecuado a cada temporalidad, de modo que se vea la estructura relevante de esa TF.
 function encuadrarPorDefecto(){
     if(!chart || !candlesData || !candlesData.length) return;
-    const VIS = {'1m':220,'3m':200,'5m':200,'15m':190,'30m':180,
-                 '1h':180,'2h':170,'4h':160,'6h':150,'8h':140,'12h':140,
-                 '1d':130,'3d':110,'1w':90,'1M':60}[currentInterval] || 180;
+    // [FIX v110] menos velas por pantalla: con 200 en 5m las velas salían mucho más
+    // estrechas que en TradingView (que muestra ~90-100). Ahora los valores se acercan
+    // a lo que enseña TradingView por defecto, así el cuerpo de vela es comparable.
+    const VIS = {'1m':110,'3m':105,'5m':100,'15m':100,'30m':95,
+                 '1h':95,'2h':90,'4h':90,'6h':85,'8h':85,'12h':80,
+                 '1d':80,'3d':70,'1w':60,'1M':45}[currentInterval] || 100;
     const n = candlesData.length;
     try{
-        chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - VIS), to: n + 8 });
+        chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - VIS), to: n + 2 });   // [FIX v106] +8 → +2: el rightOffset ya reserva su margen y ambos se sumaban
         chart.applyOptions({ rightPriceScale: { autoScale: true } });
     }catch(e){}
 }
@@ -1874,12 +1964,7 @@ function changeChartInterval() {
 
     // Reconectar kline con nuevo intervalo
     if (wsManager && wsManager.wsInstances) {
-        const klineWs = wsManager.wsInstances.get('kline');
-        if (klineWs && klineWs.readyState !== WebSocket.CLOSED) {
-            klineWs.onclose = null;
-            klineWs.close(1000, 'Interval change');
-        }
-        wsManager.wsInstances.delete('kline');
+        // [v117] el intervalo viaja en el socket combinado; connectKline lo reabre
     }
 
     // Cargar histórico directamente (sin esperar al WS)
@@ -2601,7 +2686,15 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
     }
 
     function detectInstitutionalZones() {
-        if (!markPriceFutures || markPriceFutures <= 0) return [];
+        // [FIX v119] red de seguridad: si markPriceFutures no llegó por WS pero sí hay velas,
+        // se usa el cierre de la última. Antes, sin ese precio no salía NINGUNA zona.
+        if (!markPriceFutures || markPriceFutures <= 0) {
+            const _cd = window.candlesData || [];
+            if (_cd.length && _cd[_cd.length-1].close > 0) {
+                markPriceFutures = _cd[_cd.length-1].close;
+                console.warn('⚠️ markPriceFutures ausente → usando cierre de la última vela:', markPriceFutures);
+            } else return [];
+        }
 
         const _libro = ordenesLibroCompleto();
         const _fuente = _libro || [
@@ -4455,9 +4548,11 @@ document.addEventListener('DOMContentLoaded',function(){const largeInput=documen
         // ── Intervalo de respaldo (por si el WS falla) ──
         // El sistema principal es el WS en tiempo real via checkZonesForSymbol()
         // Este intervalo solo hace chequeo de seguridad cada 10s
+        // [OPT v104] el interior de checkZoneMitigation ya tiene throttle de 2s: llamarlo
+        // cada 500ms significaba que 3 de cada 4 ejecuciones no hacían nada útil
         zoneMitigationInterval = setInterval(() => {
-            checkZoneMitigation();   // zonas activas del par actual
-        }, 500);
+            checkZoneMitigation();
+        }, 2000);
 
         // Sincronizar watchlist de WS al arrancar y cada 30s
 
@@ -6000,8 +6095,44 @@ function startRealtimePriceLine() {
     function updateCountdown() {
         if (!candlesData.length) return;
         const now      = Math.floor(Date.now() / 1000);
-        const last     = candlesData[candlesData.length - 1];
+        let   last     = candlesData[candlesData.length - 1];
         const ivSecs   = intervalToSeconds(currentInterval);
+
+        // [FIX v122] APERTURA AUTOMÁTICA DE VELA. El contador se quedaba en 00:00 porque la
+        // vela nueva solo se creaba al recibir un mensaje del WS con tiempo mayor. Si ese
+        // mensaje tardaba o se perdía, la vela vieja seguía siendo la última y el contador
+        // no arrancaba. Ahora, si el reloj indica que la vela ya venció, se abre aquí mismo
+        // con el precio actual; cuando llegue el mensaje real, lo reemplaza sin más.
+        if (ivSecs > 0 && (now - last.time) >= ivSecs) {
+            const _nuevos = Math.floor((now - last.time) / ivSecs);
+            if (_nuevos > 0 && _nuevos < 100) {
+                // [FIX v123] la vela se abre con el CIERRE DE LA ANTERIOR, no con
+                // markPriceFutures: usar el mark price creaba un salto de precio (la vela
+                // anterior cerraba en 62915 y la nueva abría en 62943) que se veía como un
+                // hueco. Y el precio actual se aplica como CIERRE, no a los cuatro campos,
+                // para que la vela tenga cuerpo desde el primer momento en vez de una raya.
+                const _cierreAnt = last.close;
+                const _pxAhora   = markPriceFutures || _cierreAnt;
+                for (let _i = 1; _i <= _nuevos; _i++) {
+                    const _esUltima = (_i === _nuevos);
+                    const _cl = _esUltima ? _pxAhora : _cierreAnt;
+                    candlesData.push({
+                        time: last.time + ivSecs*_i,
+                        open:  _cierreAnt,
+                        high:  Math.max(_cierreAnt, _cl),
+                        low:   Math.min(_cierreAnt, _cl),
+                        close: _cl,
+                        volume: 0, usdt: 0, tb: 0
+                    });
+                }
+                if (candlesData.length > 600) candlesData.splice(0, candlesData.length-600);
+                window.candlesData = candlesData;
+                last = candlesData[candlesData.length - 1];
+                try { candlestickSeries.setData(candlesData); } catch(_) {}
+                console.log('🕐 Vela nueva abierta por reloj ('+currentInterval+')');
+            }
+        }
+
         const timeLeft = Math.max(0, ivSecs - (now - last.time));
 
         function fmt(s) {
@@ -7758,29 +7889,10 @@ function init() {
         if (smcPanel) smcPanel.style.display = 'none';
     }, 1500);
 
-    // ── Timer permanente: stats de liquidez cada 500ms ──
-    setInterval(function() {
-        try {
-            if (typeof updateLiquidityStats === 'function' &&
-                typeof futuresBidsData !== 'undefined' &&
-                (futuresBidsData.length > 0 || futuresAsksData.length > 0)) {
-                updateLiquidityStats();
-                if (typeof updateMarketSpread === 'function') updateMarketSpread();
-            }
-        } catch(e) {}
-    }, 500);
+    // [OPT v104] eliminado: había OTRO timer idéntico registrado en window.load (cada 2s).
+    // Este de 500ms recorría el libro completo 4 veces por segundo sin necesidad.
 
-    // ── Watchdog: reconectar depth WS si lleva >15s sin datos ──
-    setInterval(function() {
-        try {
-            const elapsed = Date.now() - (window._lastDepthUpdate || Date.now());
-            if (elapsed > 15000 && typeof wsManager !== 'undefined' && wsManager) {
-                console.warn('⚠️ Depth WS sin datos ' + Math.round(elapsed/1000) + 's — reconectando');
-                window._lastDepthUpdate = Date.now();
-                try { wsManager.connectDepth(); } catch(_) {}
-            }
-        } catch(e) {}
-    }, 5000);
+    // [OPT v104] eliminado: watchdog duplicado (el de window.load hace lo mismo)
 
     // Menú contextual del gráfico — registrar UNA SOLA VEZ
     const _chartEl = document.getElementById('chart-container');
@@ -8208,6 +8320,33 @@ window.addEventListener('load', function() {
                 }
             } catch(e) {}
         }, 2000);
+
+        // [AÑADIDO v111] VIGILANTE DEL STREAM DE VELAS. Binance envía un mensaje de kline
+        // cada ~250ms, así que 20s de silencio significa que el socket murió sin avisar
+        // (pasa tras suspender el equipo o con cortes de red). Antes había que pulsar F5;
+        // ahora se reconecta solo y se recarga el histórico para tapar el hueco.
+        setInterval(function(){
+            try{
+                if(!window._lastKlineMsg) return;
+                const mudo = Date.now() - window._lastKlineMsg;
+                // [FIX v115] el vigilante era demasiado agresivo: saltaba a los 12s y VACIABA
+                // las velas, dejando el chart en blanco. Si el silencio se repetía entraba en
+                // bucle de reconexión y parecía que nada se actualizaba. Ahora:
+                //  · espera 45s (Binance puede estar tranquilo en pares poco activos)
+                //  · NO borra las velas: solo reconecta el socket
+                //  · el histórico se recarga aparte, sin dejar el chart vacío
+                //  · máximo 1 reconexión cada 2 minutos
+                const _ultRec = window._ultRecKline || 0;
+                if(mudo > 45000 && wsManager && (Date.now()-_ultRec > 120000)){
+                    window._ultRecKline = Date.now();
+                    console.warn('🔧 Velas sin actualizar desde hace '+Math.round(mudo/1000)+'s → reconectando kline (sin borrar el chart)');
+                    window._lastKlineMsg = Date.now();
+                    wsManager.connectKline(currentInterval);
+                    // recargar el histórico en segundo plano, conservando lo que ya se ve
+                    setTimeout(()=>{ try{ if(typeof loadHistoricalKlines==='function') loadHistoricalKlines(); }catch(_){} }, 2500);
+                }
+            }catch(e){}
+        }, 8000);
 
         // Watchdog: reconectar depth WS si lleva >15s sin datos
         setInterval(function() {
@@ -9174,15 +9313,23 @@ const MapaLiq = (function(){
         const x1=ts.timeToCoordinate(S.candles[N-1].t/1000), x0=ts.timeToCoordinate(S.candles[0].t/1000);
         if(x1!=null&&x0!=null&&N>1) bw=Math.max(1.5,(x1-x0)/(N-1));
         const inv=1/S.gridMax;
+        // [FIX v125] la última columna vuelve a terminar en la VELA ACTUAL, no en el borde
+        // del gráfico. El fix de la v105 la estiraba hasta el final del área de dibujo y el
+        // heatmap invadía toda la zona vacía de la derecha. Se le da media vela extra, que
+        // es justo lo que faltaba para cubrir el cuerpo de la vela en curso.
+        const xTope = w - axisPad;
         for(let i=0;i<N;i++){
           const x=ts.timeToCoordinate(S.candles[i].t/1000);
-          if(x==null||x<-bw||x>w-axisPad) continue;
+          if(x==null||x<-bw||x>xTope) continue;
+          const esUltima = (i === N-1);
+          const xIniCol = x - bw/2;
+          const anchoCol = esUltima ? Math.min(bw*1.5, Math.max(bw, xTope - xIniCol)) : bw;
           const col=S.grid[i];
           for(let r=r0;r<=r1;r++){
             const v=col[r]; if(v<=0) continue;
             const c=heatColor(Math.min(1, v*inv));   // gamma ya integrado en la paleta
             if(!c) continue;
-            cx.fillStyle=c; cx.fillRect(x-bw/2, rowY[r]-rowH/2, bw, rowH);
+            cx.fillStyle=c; cx.fillRect(xIniCol, rowY[r]-rowH/2, anchoCol, rowH);
           }
         }
         // [AÑADIDO v45] la "línea" vertical del borde es el corte en seco de TODAS las bandas
@@ -9312,9 +9459,16 @@ const MapaLiq = (function(){
         }
         cx.lineWidth=1;
       } else {
-        // sin muros que superen el umbral: decirlo en vez de no pintar nada
-        cx.fillStyle="rgba(125,140,165,0.75)"; cx.font="10px Consolas";
-        cx.fillText(`🐋 ${S.bookErr||("sin muros ≥ "+usdF(S.bookMinUsd)+" — baja el umbral en 'Muro ≥'")}`, 6, h-8);
+        // [FIX v109] el aviso se pintaba en h-8, encima de las etiquetas de fecha del eje
+        // temporal y se veía todo superpuesto. Ahora va arriba a la izquierda, sobre un chip
+        // oscuro para que se lea limpio sin tapar nada.
+        const _msg=`🐋 ${S.bookErr||("sin muros ≥ "+usdF(S.bookMinUsd)+" — baja el umbral")}`;
+        cx.font="10px Consolas";
+        const _mw=cx.measureText(_msg).width;
+        cx.fillStyle="rgba(3,6,12,0.8)";
+        cx.fillRect(6, 8, _mw+12, 16);
+        cx.fillStyle="rgba(150,165,190,0.9)";
+        cx.fillText(_msg, 12, 20);
       }
     }
     // 6) VRVP lateral + POC ámbar
@@ -9951,8 +10105,26 @@ const MapaLiq = (function(){
       }catch(e){}
     };
     hook();
-    setInterval(tick, 2000);   // ciclo maestro: 0.5 Hz — el dibujo va aparte por rAF
-    setInterval(requestDraw, 1000);
+    // [OPT v104] con la pestaña oculta no se recalcula ni se redibuja: el navegador ya
+    // throttlea, pero así se evita también el trabajo de CPU acumulado en segundo plano
+    setInterval(()=>{ if(!document.hidden) tick(); }, 2000);
+    setInterval(()=>{ if(!document.hidden) requestDraw(); }, 1000);
+    document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ S.sig=""; requestDraw(); } });
+    // [AÑADIDO v111] al volver a la pestaña, si la última vela quedó desfasada más de 2
+    // intervalos se recarga el histórico (el navegador congela los WS en segundo plano)
+    document.addEventListener("visibilitychange", ()=>{
+      if(document.hidden) return;
+      setTimeout(()=>{
+        try{
+          const cd=window.candlesData||[];
+          const st=(typeof intervalToSeconds==="function")?intervalToSeconds(currentInterval):0;
+          if(cd.length && st>0 && ((Date.now()/1000) - cd[cd.length-1].time) > st*2){
+            console.warn("🔧 Vuelta a la pestaña con velas desfasadas → recargando histórico");
+            if(typeof loadHistoricalKlines==="function") loadHistoricalKlines();
+          }
+        }catch(e){}
+      }, 1200);
+    });
     window.addEventListener("resize", requestDraw);
     setTimeout(tick, 3000);
   }
@@ -9971,14 +10143,21 @@ window.auditar = function(){
   const cd = window.candlesData || [];
   const S  = (window.MapaLiq && MapaLiq._state) ? MapaLiq._state : {};
   const f  = n => n>=1e9 ? (n/1e9).toFixed(2)+'B' : n>=1e6 ? (n/1e6).toFixed(2)+'M' : (n/1e3).toFixed(0)+'K';
-  let sumA=0, sumB=0;
-  for(const [p,q] of fb.asks) sumA += p*q;
-  for(const [p,q] of fb.bids) sumB += p*q;
+  let sumA=0, sumB=0, maxA=0, minB=Infinity;
+  for(const [p,q] of fb.asks){ sumA += p*q; if(p>maxA) maxA=p; }
+  for(const [p,q] of fb.bids){ sumB += p*q; if(p<minB) minB=p; }
+  // [AÑADIDO v103] hasta dónde llega el libro: fuera de este rango NO hay dato, por eso
+  // no salen zonas. Se amplía solo con el tiempo, según el WS reporta niveles lejanos.
+  const px0 = window.markPriceFutures || 0;
+  const cobertura = (px0>0 && maxA>0 && minB<Infinity)
+      ? (minB.toFixed(2)+' → '+maxA.toFixed(2)+'  ('+((minB-px0)/px0*100).toFixed(1)+'% / +'+((maxA-px0)/px0*100).toFixed(1)+'%)')
+      : 'sin datos';
   const velaTb = cd.length ? cd.filter(k=>Number.isFinite(k.tb)).length : 0;
 
   console.log('%c🔍 AUDITORÍA DE DATOS', 'background:#37c0ff;color:#000;font-weight:bold;padding:3px 10px;');
   console.table([
     {capa:'Libro (niveles)',        tipo:'REAL',    fuente:'WS @depth + snapshot REST', valor:fb.asks.size+' asks / '+fb.bids.size+' bids'},
+    {capa:'COBERTURA del libro',    tipo:'REAL',    fuente:'límite de la API de Binance', valor:cobertura},
     {capa:'Liquidez total',         tipo:'REAL',    fuente:window._liqFuente||'?',      valor:f(sumA)+' / '+f(sumB)},
     {capa:'Zonas institucionales',  tipo:'REAL',    fuente:window._zonasFuente||'?',    valor:((window.institutionalZones||[]).length)+' zonas'},
     {capa:'Muros (mapa)',           tipo:'REAL',    fuente:'_fullBook, bins 0.15%',     valor:((S.bookWalls||[]).length)+' muros ≥ '+f(S.bookMinUsd||0)},
@@ -9994,10 +10173,79 @@ window.auditar = function(){
     {capa:'Zonas macro HTF',        tipo:'MODELO',  fuente:'mismo modelo en '+(S.htfTf||'?'), valor:((S.htfZones||[]).length)+' zonas'},
   ]);
   if(!fb.asks.size) console.warn('⚠️ El libro aún no está sincronizado: los cálculos usan el respaldo del top-50.');
+  console.log('%cℹ️ Fuera del rango de COBERTURA no puede haber zonas: Binance no publica esos niveles. La cobertura se amplía sola con el tiempo (el WS va reportando precios lejanos).', 'color:#ffb74d');
   if(velaTb < cd.length) console.warn('⚠️ '+(cd.length-velaTb)+' velas sin taker-buy: el modelo usa 0.5 neutro en esas.');
   return 'REAL = dato medido · MODELO = estimación · MIXTO = fusión de ambos';
 };
 console.log('%c💡 Escribe auditar() para ver de dónde sale cada dato', 'color:#37c0ff');
+</script>
+
+<script>
+// [AÑADIDO v124] VERIFICACIÓN DE TIEMPO REAL — escribe verificar() en la consola.
+// Toma dos muestras separadas 5s y comprueba qué capas han cambiado de verdad.
+window.verificar = function(){
+  const S = (window.MapaLiq && MapaLiq._state) ? MapaLiq._state : {};
+  const fb = window._fullBook || {bids:new Map(), asks:new Map()};
+  const foto = () => {
+    let sa=0, sb=0;
+    for(const [p,q] of fb.asks) sa += p*q;
+    for(const [p,q] of fb.bids) sb += p*q;
+    const cd = window.candlesData||[];
+    return {
+      precio:  markPriceFutures,
+      vela:    cd.length ? cd[cd.length-1].close : null,
+      libroA:  Math.round(sa), libroB: Math.round(sb),
+      niveles: fb.asks.size + fb.bids.size,
+      zonas:   (window.institutionalZones||[]).length,
+      zonaTop: (window.institutionalZones||[])[0] ? (window.institutionalZones||[])[0].totalUsdt : 0,
+      muros:   (S.bookWalls||[]).length,
+      muroTop: (S.bookWalls||[])[0] ? Math.round((S.bookWalls||[])[0].usd) : 0,
+      calor:   (S.heatZones||[]).length,
+      objet:   (S.targetList||[]).length,
+      poc:     S.vpPoc,
+      spread:  (document.getElementById('real-spread')||{}).textContent,
+      ls:      (document.getElementById('ls-long')||{}).textContent,
+      oi:      (document.getElementById('oi-value')||{}).textContent,
+      procesadas: (typeof asksProcessed!=='undefined') ? asksProcessed+bidsProcessed : 0,
+    };
+  };
+  const a = foto();
+  console.log('%c⏱️ Midiendo 5 segundos...', 'background:#37c0ff;color:#000;padding:2px 8px;font-weight:bold;');
+  setTimeout(()=>{
+    const b = foto();
+    const fila = (capa, x, y, esperado) => ({
+      capa,
+      antes: x, ahora: y,
+      cambió: (x!==y) ? 'SÍ' : 'no',
+      estado: (x!==y) ? '🟢 vivo' : (esperado ? '🔴 QUIETO' : '⚪ normal si no hay movimiento')
+    });
+    console.log('%c✅ RESULTADO', 'background:#26d67c;color:#000;padding:2px 8px;font-weight:bold;');
+    console.table([
+      fila('Órdenes procesadas', a.procesadas, b.procesadas, true),
+      fila('Niveles del libro',  a.niveles,    b.niveles,    true),
+      fila('Liquidez asks',      a.libroA,     b.libroA,     true),
+      fila('Liquidez bids',      a.libroB,     b.libroB,     true),
+      fila('Precio (ticker)',    a.precio,     b.precio,     false),
+      fila('Cierre vela',        a.vela,       b.vela,       false),
+      fila('Zonas inst. (nº)',   a.zonas,      b.zonas,      false),
+      fila('Zona top USDT',      a.zonaTop,    b.zonaTop,    false),
+      fila('Muros (nº)',         a.muros,      b.muros,      false),
+      fila('Muro top USD',       a.muroTop,    b.muroTop,    false),
+      fila('Zonas de calor',     a.calor,      b.calor,      false),
+      fila('Objetivos',          a.objet,      b.objet,      false),
+      fila('POC (fila)',         a.poc,        b.poc,        false),
+      fila('Spread real',        a.spread,     b.spread,     false),
+      fila('Largo/Corto',        a.ls,         b.ls,         false),
+      fila('Interés Abierto',    a.oi,         b.oi,         false),
+    ]);
+    console.log('%cLectura: las 4 primeras filas DEBEN cambiar (el libro fluye constantemente).',
+                'color:#ffb74d');
+    console.log('%cLas demás cambian solo si el mercado se movió en esos 5s: si el precio está quieto, es normal que no varíen.',
+                'color:#8fa2bd');
+  }, 5000);
+  return 'midiendo...';
+};
+console.log('%c💡 Escribe verificar() para comprobar que todo va en tiempo real', 'color:#37c0ff');
 </script>
 </body>
 </html>
